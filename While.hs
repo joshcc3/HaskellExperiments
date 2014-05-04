@@ -72,10 +72,36 @@ instance Monad m => Monad (MbT m) where
 data Exp =   Var String  | Const Int  deriving (Eq, Ord, Show)
 type Result = Maybe Int
 type Env = [(String , Int)]
-data Com =   Ass String Exp | If Bool Com Com 
+data Com =   Ass String (Rdr Env Result) | If Bool Com Com 
            | Seq Com Com    | Skip | While Bool Com
 
+data RComp a = R (Com -> (Com, Either a (RComp a)))
 
+
+instance Monad RComp where
+--  return :: a -> RComp a
+   return a = R (\c -> (c, Left a))
+
+--   (>>=) :: RComp a -> (a -> RComp b) -> RComp b
+   (>>=) (R rf) (f) = R (\c -> func (rf c) f)
+     where
+--       func :: (Com, Either a (RComp a)) -> (a -> RComp b) -> (Com, Either b (RComp b))
+       func (c, Left v) f = let (R rf') = (f v) in rf' c
+       func (c, Right suspended) f = (c, Right (suspended >>= f))
+
+
+
+{- What happens in the bind function is that the initial context for resource 
+ utilization if by applying the resource supplied to the original context
+ results in a value, we simply feed this value to the function that takes
+ takes values and generates resource contexts out of them, that is the
+ resource context depends on the value of another computation on a resource
+ much like in function calls. 
+ If the result of the first operation is a suspended computation because the 
+ resources ran out, then we just return the result - the resource we have
+ uptil now and the suspended computation is now the original suspended computation
+ bound into the subsequent computation denoted by f
+-}
 
 instance Num (Rdr Env Result) where
   (+) = liftM2 (liftM2 (+))
