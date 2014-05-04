@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, GADTs #-}
+
 
 import Control.Monad
 import Data.List
@@ -72,14 +73,27 @@ instance Monad m => Monad (MbT m) where
 data Exp =   Var String  | Const Int  deriving (Eq, Ord, Show)
 type Result = Maybe Int
 type Env = [(String , Int)]
-data Com =   Ass String Exp | If Bool Com Com 
-           | Seq Com Com    | Skip | While Bool Com
+data Com e where
+     Assign :: (Rdr Env a) => String -> e -> Com e
+     
+{-
+   Ass String a | If Bool (Com a) (Com a)
+           | Seq (Com a) (Com a)   | Skip | While Bool (Com a)
 
+
+eval :: Com a -> Env -> (Result, Env)
+eval Skip e = (Nothing, e)
+--eval (Ass var exp) env = runReader (readerFunc exp)
+
+   We want to use the state monad to interpret the simple command language.
+   The com ADT is a tree. Thus we want to traverse the tree
+-}
 
 
 instance Num (Rdr Env Result) where
   (+) = liftM2 (liftM2 (+))
   (*) = liftM2 (liftM2 (*))
+  (-) = liftM2 (liftM2 (-))
   abs  = liftM (liftM abs) 
   signum = liftM (liftM signum)   
   fromInteger i = Reader (\_ -> (Just . fromInteger) i)
