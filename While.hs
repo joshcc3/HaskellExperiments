@@ -72,8 +72,33 @@ instance Monad m => Monad (MbT m) where
 data Exp =   Var String  | Const Int  deriving (Eq, Ord, Show)
 type Result = Maybe Int
 type Env = [(String , Int)]
-data Com =   Ass String (Rdr Env Result) | If Bool Com Com 
+
+
+--------------------------------------------------------------------------------
+
+data Com =   Ass String (Rdr Env Result) | If Bool Com Com -- change Bool to BoolExp
            | Seq Com Com    | Skip | While Bool Com
+-- create a type class for types that define well founded orderings on instances
+{- 
+   in our case of computing resources, the resource is a sequence of 
+   commands. The value produced by the sequence of commands is a state function
+   or a binding of variables to values the type Env
+-}
+
+-- the step function performs a (small step?) operation on the commands
+step :: Env -> RComp Env
+step state = c 
+  where
+    c = R f
+    f :: Com -> (Com, Either Env (RComp Env))
+    f (Ass var exp) = let state' = update (var , runReader exp state) state
+                      in (Skip, Left state')
+    update :: (String, Result) -> Env -> Env
+    update (_,Nothing) e  = e
+    update (v, Just x) e  = (v,x):e
+
+
+--------------------------------------------------------------------------------
 
 data RComp a = R (Com -> (Com, Either a (RComp a)))
 
@@ -85,11 +110,9 @@ instance Monad RComp where
 --   (>>=) :: RComp a -> (a -> RComp b) -> RComp b
    (>>=) (R rf) (f) = R (\c -> func (rf c) f)
      where
---       func :: (Com, Either a (RComp a)) -> (a -> RComp b) -> (Com, Either b (RComp b))
+--func :: (Com, Either a (RComp a)) -> (a -> RComp b)->(Com, Either b (RComp b))
        func (c, Left v) f = let (R rf') = (f v) in rf' c
        func (c, Right suspended) f = (c, Right (suspended >>= f))
-
-
 
 {- What happens in the bind function is that the initial context for resource 
  utilization if by applying the resource supplied to the original context
@@ -102,6 +125,13 @@ instance Monad RComp where
  uptil now and the suspended computation is now the original suspended computation
  bound into the subsequent computation denoted by f
 -}
+
+--------------------------------------------------------------------------------
+
+
+
+
+
 
 instance Num (Rdr Env Result) where
   (+) = liftM2 (liftM2 (+))
