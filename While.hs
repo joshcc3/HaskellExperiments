@@ -85,6 +85,16 @@ data Com =   Ass String (Rdr Env Result) | If Bool Com Com -- change Bool to Boo
    or a binding of variables to values the type Env
 -}
 
+-- what we want to do is given some resources and a context for consuming these 
+-- resources compute the result
+
+
+
+run :: Com -> RComp Env -> Maybe Env
+run program (R f) = case (f program) of
+    	       	    (_, Left res) -> Just res
+		    (env, Right s) -> Nothing
+
 -- the step function performs a (small step?) operation on the commands
 step :: Env -> RComp Env
 step state = c 
@@ -93,9 +103,17 @@ step state = c
     f :: Com -> (Com, Either Env (RComp Env))
     f (Ass var exp) = let state' = update (var , runReader exp state) state
                       in (Skip, Left state')
+    f (Skip)        = (Skip, Right c)
+    f (If b c c')   = if b then (c, Left state)
+                           else (c', Left state)
+    f (Seq c c')    = let (c, res) = f c in (c', res)
+    f (While b com) = f (If b (Seq com (While b com)) Skip)
+
     update :: (String, Result) -> Env -> Env
     update (_,Nothing) e  = e
     update (v, Just x) e  = (v,x):e
+
+
 
 
 --------------------------------------------------------------------------------
@@ -160,7 +178,7 @@ foldexp (Const n) env = n
 
 
 --------------------------------------------------------------------------------
--- TESTS
+-- TESTS EXP
 
 num x = Reader $ readerFunc (Const x)
 var x =  Reader $ readerFunc (Var x)
@@ -178,6 +196,13 @@ tests = [test1, test2]
 runTestsuite = if and tests 
 	       then putStrLn "Tests Passed"
 	       else putStrLn "Tests Failed: Implement ErrorT Monad"
+
+--------------------------------------------------------------------------------
+
+-- TESTS COM
+
+program :: Com
+program = (Seq (Ass "x" (num 0)) (Ass "x" ((var "x") + 2)))
 
 
 
