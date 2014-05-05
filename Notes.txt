@@ -46,3 +46,49 @@
  uptil now and the suspended computation is now the original suspended computation
  bound into the subsequent computation denoted by f
 >
+
+
+<LINK 7 
+ Working
+   (+) :: (MbT (Rdr Env) Exp) -> (MbT (Rdr Env) Exp) -> (MbT (Rdr Env) Exp)
+
+   abs :: (MbT (Rdr Env) Exp) -> (MbT (Rdr Env) Exp)
+   abs (MaybeT readerM) = MaybeT (Reader (\env -> lift (abs) (runReader readerM env)))
+
+
+
+eval :: Exp -> Env -> (Maybe Int, Env)
+eval (Var var) env 
+ = (lookup var env, env)
+ = (,) (lookup var env) env
+
+let (lookup var) = g
+    (,)          = h
+    
+eval env = h (g env) env
+eval :: (Int -> Env -> (Int, Env)) -> (Env -> Int) -> (Int, Env)
+
+Thus in this case the reader monad is environment
+
+eval h g env = h (g env) env
+
+instance Monad (-> r) where
+(>>=) :: m a -> (a -> m b) -> m b
+(>>=) :: (r -> a) -> (a -> r -> b) -> r -> b
+
+f :: (a -> b) ->  (b -> a -> c) -> a -> c
+a = r, b = a, c = b
+f :: (r -> b) -> (a -> r -> b) -> r -> b
+
+f y = h (g y) y = (>>=) g h
+
+
+ = (>>=) (lookup var) (,) env
+
+eval (Var var) = (>>=) (lookup var) (,)
+
+Thus eval is just bind with a specific function for h and g
+thus
+
+
+>

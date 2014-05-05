@@ -1,6 +1,7 @@
 module Test where
 
 import RComp
+import MonadInstances
 
 --------------------------------------------------------------------------------
 -- TESTS EXP
