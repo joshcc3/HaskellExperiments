@@ -1,0 +1,48 @@
+<LINK 1
+ 
+   Constructing the state monad. The state monad is simply a monad
+   that holds a state function. A state function is a function that
+   takes a state and generates a value and a new state out of the 
+   state. 
+   The state monad must evidently be a functor. A functor is something
+   that relates categories. It relates the Hask category with the 
+   St category a sub category of Hask. It is the category that is 
+   parameterized by a state. It maps tyeps from Hask to types in State.
+   It maps morphisms in Hask, to morphisms in State. That is it provides
+   a computational context for values.
+>
+
+<LINK 2
+ the state constructor State :: (s -> (a,s)) -> St s a
+ that is it takes a function that takes a state and produces
+ a value and an updated state.
+>
+
+<LINK 3
+ create a type class for types that define well founded orderings on instances
+>
+
+<LINK 4
+   in our case of computing resources, the resource is a sequence of 
+   commands. The value produced by the sequence of commands is a state function
+   or a binding of variables to values the type Env
+   what we want to do is given some resources and a context for consuming these 
+   resources compute the result
+>
+
+<LINK 5
+ the step function performs a (small step?) operation on the commands
+>
+
+<LINK 6
+ What happens in the bind function is that the initial context for resource 
+ utilization if by applying the resource supplied to the original context
+ results in a value, we simply feed this value to the function that takes
+ takes values and generates resource contexts out of them, that is the
+ resource context depends on the value of another computation on a resource
+ much like in function calls. 
+ If the result of the first operation is a suspended computation because the 
+ resources ran out, then we just return the result - the resource we have
+ uptil now and the suspended computation is now the original suspended computation
+ bound into the subsequent computation denoted by f
+>

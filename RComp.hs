@@ -5,22 +5,10 @@ module RComp where
 import Control.Monad
 import Data.List
 
-{- 
-   Constructing the state monad. The state monad is simply a monad
-   that holds a state function. A state function is a function that
-   takes a state and generates a value and a new state out of the 
-   state. 
-   The state monad must evidently be a functor. A functor is something
-   that relates categories. It relates the Hask category with the 
-   St category a sub category of Hask. It is the category that is 
-   parameterized by a state. It maps tyeps from Hask to types in State.
-   It maps morphisms in Hask, to morphisms in State. That is it provides
-   a computational context for values.
--}
 
--- the state constructor State :: (s -> (a,s)) -> St s a
--- that is it takes a function that takes a state and produces
--- a value and an updated state.
+-- LINK 1
+
+-- LINK 2
 data St s a = State {runState :: s -> (a, s) }
 
 instance Functor (St s) where
@@ -80,15 +68,11 @@ type Env = [(String , Int)]
 
 data Com =   Ass String (Rdr Env Result) | If Bool Com Com -- change Bool to BoolExp
            | Seq Com Com    | Skip | While Bool Com
--- create a type class for types that define well founded orderings on instances
-{- 
-   in our case of computing resources, the resource is a sequence of 
-   commands. The value produced by the sequence of commands is a state function
-   or a binding of variables to values the type Env
--}
+-- LINK 3
 
--- what we want to do is given some resources and a context for consuming these 
--- resources compute the result
+-- LINK 4
+
+
 
 
 
@@ -97,7 +81,8 @@ run program (R f) = case (f program) of
     	       	    (_, Left res) -> Just res
 		    (env, Right s) -> Nothing
 
--- the step function performs a (small step?) operation on the commands
+
+-- LINK 5
 step :: Env -> RComp Env
 step state = c 
   where
@@ -134,17 +119,8 @@ instance Monad RComp where
        func (c, Left v) f = let (R rf') = (f v) in rf' c
        func (c, Right suspended) f = (c, Right (suspended >>= f))
 
-{- What happens in the bind function is that the initial context for resource 
- utilization if by applying the resource supplied to the original context
- results in a value, we simply feed this value to the function that takes
- takes values and generates resource contexts out of them, that is the
- resource context depends on the value of another computation on a resource
- much like in function calls. 
- If the result of the first operation is a suspended computation because the 
- resources ran out, then we just return the result - the resource we have
- uptil now and the suspended computation is now the original suspended computation
- bound into the subsequent computation denoted by f
--}
+
+-- LINK 6
 
 --------------------------------------------------------------------------------
 
