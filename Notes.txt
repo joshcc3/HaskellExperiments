@@ -92,3 +92,35 @@ thus
 
 
 >
+
+< LINK 8
+  We are going to try and build a resourcefule computation.
+  The resourceful computation is going to get some resources and proceed
+  with computation until all the resources are finished.
+  data RComp r a = R (r -> (r, Either a (RComp r a)))
+
+
+instance Monad (RComp r) where
+--  return :: a -> RComp a
+   return a = R (\c -> (c, Left a))
+
+--   (>>=) :: RComp a -> (a -> RComp b) -> RComp b
+   (>>=) (R rf) (f) = R (\c -> func (rf c) f)
+     where
+--func :: (Com, Either a (RComp a)) -> (a -> RComp b)->(Com, Either b (RComp b))
+       func (c, Left v) f = let (R rf') = (f v) in rf' c
+       func (c, Right suspended) f = (c, Right (suspended >>= f))
+
+  This monad wraps a function that takes a resource and produces a new value
+  using that resource.
+
+  As the simplest operation we are simply going to let our resources be a number
+  of computation steps remaining. The value that our function produces will be 
+  an integer.
+
+>
+
+< LINK 9
+  What this function says is that if we have more resources then take a step and return
+  the result passed to us. This function seems to be acting as return.
+>

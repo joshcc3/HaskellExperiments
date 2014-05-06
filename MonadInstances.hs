@@ -13,6 +13,7 @@ instance Functor (St s) where
   fmap f (State sf) = State (\state -> let (v, newState) = sf state 
                                        in (f v, newState))
 
+
 instance Monad (St s) where
 
   return a = State (\state -> (a, state))
