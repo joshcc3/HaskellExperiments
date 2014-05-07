@@ -1,3 +1,5 @@
+module RegMachineEg where
+
 import MonadInstances
 import Data.Map
 
@@ -19,8 +21,8 @@ simpleState b  = State ((,) b.(+1))
 bindF :: Bool -> StT Int (Rdr Int) Bool
 bindF = StateT.(return.).runState.simpleState
 
-program :: StT Int (Rdr Int) Bool
-program
+program1 :: StT Int (Rdr Int) Bool
+program1
  = (liftST simpleReader) >>= bindF >>= bindF >>= bindF
 
 run :: StT Int (Rdr Int) Bool -> Int -> Int -> (Bool, Int)
