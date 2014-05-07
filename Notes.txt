@@ -1,12 +1,12 @@
 <LINK 1
- 
+
    Constructing the state monad. The state monad is simply a monad
    that holds a state function. A state function is a function that
-   takes a state and generates a value and a new state out of the 
-   state. 
+   takes a state and generates a value and a new state out of the
+   state.
    The state monad must evidently be a functor. A functor is something
-   that relates categories. It relates the Hask category with the 
-   St category a sub category of Hask. It is the category that is 
+   that relates categories. It relates the Hask category with the
+   St category a sub category of Hask. It is the category that is
    parameterized by a state. It maps tyeps from Hask to types in State.
    It maps morphisms in Hask, to morphisms in State. That is it provides
    a computational context for values.
@@ -23,10 +23,10 @@
 >
 
 <LINK 4
-   in our case of computing resources, the resource is a sequence of 
+   in our case of computing resources, the resource is a sequence of
    commands. The value produced by the sequence of commands is a state function
    or a binding of variables to values the type Env
-   what we want to do is given some resources and a context for consuming these 
+   what we want to do is given some resources and a context for consuming these
    resources compute the result
 >
 
@@ -35,20 +35,20 @@
 >
 
 <LINK 6
- What happens in the bind function is that the initial context for resource 
+ What happens in the bind function is that the initial context for resource
  utilization if by applying the resource supplied to the original context
  results in a value, we simply feed this value to the function that takes
  takes values and generates resource contexts out of them, that is the
  resource context depends on the value of another computation on a resource
- much like in function calls. 
- If the result of the first operation is a suspended computation because the 
+ much like in function calls.
+ If the result of the first operation is a suspended computation because the
  resources ran out, then we just return the result - the resource we have
  uptil now and the suspended computation is now the original suspended computation
  bound into the subsequent computation denoted by f
 >
 
 
-<LINK 7 
+<LINK 7
  Working
    (+) :: (MbT (Rdr Env) Exp) -> (MbT (Rdr Env) Exp) -> (MbT (Rdr Env) Exp)
 
@@ -58,13 +58,13 @@
 
 
 eval :: Exp -> Env -> (Maybe Int, Env)
-eval (Var var) env 
+eval (Var var) env
  = (lookup var env, env)
  = (,) (lookup var env) env
 
 let (lookup var) = g
     (,)          = h
-    
+
 eval env = h (g env) env
 eval :: (Int -> Env -> (Int, Env)) -> (Env -> Int) -> (Int, Env)
 
@@ -115,7 +115,7 @@ instance Monad (RComp r) where
   using that resource.
 
   As the simplest operation we are simply going to let our resources be a number
-  of computation steps remaining. The value that our function produces will be 
+  of computation steps remaining. The value that our function produces will be
   an integer.
 
 >
@@ -123,4 +123,36 @@ instance Monad (RComp r) where
 < LINK 9
   What this function says is that if we have more resources then take a step and return
   the result passed to us. This function seems to be acting as return.
+>
+
+< LINK 10
+  The state monad is a context for COMPUTATION. The main thing is the computation. The
+  monad provides a mechanism for supplying different contexts to the computation. The
+  of what a context is, is not specified leaving it up to the specific monad to decide
+  exactly what context it will give the computation it is holding. The real power of the
+  monad comes in its ability to chain computations together.
+  Specifically for the state monad, the context it supplies to the computation it holds
+  is a value. The result of the computation is also a value allowing the state computation
+  to chain values.
+  For the maybe monad, the computation is, if something has failed, then no matter the
+  context we have failed. Otherwise the context is the identity function. Thus it houses
+  no actual computation other than the notion o failure which is even more awesome.
+
+  Monads are the design patterns of haskell.
+  The list monad is interesting. It too does not house any computation. Thus we were wrong
+  previously, housing computation is not the only way you can provide a context for computaion.
+  A list is provides a context for computation. That is computation performed on the Lst monad may
+  be seen as
+  The way to explain it is to imagine computation as an entity. Computation works on instances of types.
+  in order to augment the ability of computation without modifying the ability of computation we wrap what
+  ot operates on  - the instances of types and
+
+>
+
+< LINK 11
+ im stupid. Of course there is some intelligence in designing the monads
+ what happens is that we wnat to transform a normal stateless monad
+ into a stateful monad. We can't access the inner state of the monad.
+ The state exists beyond the monad.
+
 >

@@ -4,30 +4,19 @@ import Control.Monad
 import Data.List
 
 
--- the state monad takes a function that takes a state
--- and returns a pair of the updated value and the new state
+-- LINK 10
+pop :: St [a] a
+pop = State (\(x:xs) -> (x, xs))
 
-
-pop :: [a] -> (a, [a])
-pop l = (,) (head l) (tail l)
-
-push :: a -> [a] -> ((), [a])
-push x l = ((), x:l)
-
-popContext :: St [a] a
-popContext = State pop
-
-pushContext :: a -> St [a] ()
-pushContext = State . push
-
+push :: a -> St [a] ()
+push v = State (\l -> ((), v:l))
 
 stackOperations 
- = do 
-   pushContext 3
-   pushContext 5
-   pushContext 6
-   pushContext 7
-   x <- popContext
-   y <- popContext
-   pushContext x
-   pushContext y
+  = do
+    push 3
+    push 4
+    x <- pop
+    y <- pop
+    push 5
+    push 3
+    
