@@ -27,9 +27,11 @@ add r j = Add (Reg r) (L j)
 sub r j k = Sub (Reg r) (L j) (L k)
 
 
-testFunc numR iters machine init = map (take numR.snd.snd) (take iters $ iterate (executeInstr infiniteLoop.snd) ((), initialState))
 
-cTest1 = testFunc 1 5 infiniteLoop initialState == [[(Reg 1, 0)], [(Reg 1, 1)], [(Reg 1, 0)], [(Reg 1, 1)], [(Reg 1, 0)]]
+testFunc numR iters
+  = (take numR.).(snd.).(snd.).runState.(runReaderT (foldl1 (>>) (replicate iters regReaderT)))
+
+cTest1 = testFunc 1 5 infiniteLoop initialState == [(Reg 1, 1)]
 
 
 testReg = [cTest1]
@@ -38,10 +40,3 @@ testReg = [cTest1]
 
 --------------------------------------------------------------------------------
 
-
-    
-{-
-    if and tests
-               then putStrLn "Tests Passed"
-               else putStrLn "Tests Failed: Implement ErrorT Monad"
--}

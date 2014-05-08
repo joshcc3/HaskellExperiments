@@ -11,9 +11,9 @@ type Machine = Map Label Body
 data Body = Add Reg Label | Sub Reg Label Label
 
 
+
 simpleReader :: Rdr Int Bool
 simpleReader = Reader (/= 0)
-
 
 -- on :: (b -> b -> c) -> (a -> b) -> a -> a -> c
 simpleState :: Bool -> St Int Bool
@@ -32,6 +32,9 @@ run  = (runReader.).runStateT
 
 
 
+regReaderT :: RdrT Machine (St State) ()
+regReaderT = ReaderT (State . executeInstr)
+
 update :: (Int -> Int) -> Reg -> [(Reg, Int)] -> [(Reg, Int)]
 update f r regs = (r ,f value):(delete (r, value) regs)
   where
@@ -47,6 +50,5 @@ executeInstr config (l, regs) = func (M.lookup l config)
                                            else ((), (l, update ((-)1) reg regs))
       where
        (Just x) = Prelude.lookup reg regs 
-
 
 
