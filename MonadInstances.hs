@@ -41,8 +41,14 @@ instance Monad (Rdr r) where
 getEnv :: r -> Rdr e r
 getEnv r = Reader (\_ -> r)
 
+--------------------------------------------------------------------------------
 
+data RdrT r m a = ReaderT { runReaderT :: r -> m a}
 
+instance Monad m => Monad (RdrT r m) where
+  return = ReaderT .const.return
+  
+  (>>=) (ReaderT rf) f = ReaderT (\r -> (rf r) >>= (flip runReaderT r.f))
 
 --------------------------------------------------------------------------------
 
