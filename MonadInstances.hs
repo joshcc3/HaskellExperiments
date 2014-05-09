@@ -1,5 +1,20 @@
 module MonadInstances where
 
+--------------------------------------------------------------------------------
+
+{-
+   MONAD LAWS:
+
+   return a >>= k  =  k a
+   m >>= return    =  m
+   m >>= (\x -> k x >>= h)  =  (m >>= k) >>= h
+ 
+   fmap f xs  =  xs >>= return . f  =  liftM f xs
+
+-}
+
+
+--------------------------------------------------------------------------------
 
 -- LINK 1
 
@@ -104,3 +119,24 @@ instance Monad (RComp r) where
 -- LINK 6
 
 --------------------------------------------------------------------------------
+
+-- Cont Monad :D
+
+newtype Ct r a = Cont {runCont :: (a -> r) -> r}
+
+instance Monad (Ct r) where
+  return arg = Cont thread
+    where
+     thread threadFunc = threadFunc arg
+
+
+-- h a g f g' = (g g' x) 
+-- (f x)
+
+-- (>>=) g f :: (r -> a) -> (a -> r -> b)
+-- (>>=) g f x = g (f x) x
+--  (>>=) :: Cont r a -> ( a -> Cont r b) -> Cont r b
+-- g :: (a -> r) -> r
+-- f :: a -> Cont ((b -> r) -> r)
+
+  (>>=) (Cnt g) f = undefined
