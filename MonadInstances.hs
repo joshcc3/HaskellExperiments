@@ -1,7 +1,5 @@
 module MonadInstances where
 
-import Control.Monad
-import Data.List
 
 -- LINK 1
 
@@ -10,14 +8,15 @@ data St s a = State {runState :: s -> (a, s) }
 
 instance Functor (St s) where
 --fmap :: (a -> b) -> St s a -> St s b
-  fmap f (State sf) = State (\state -> let (v, newState) = sf state 
+  fmap f (State sf) = State (\state -> let (v, newState) = sf state
                                        in (f v, newState))
+
 
 instance Monad (St s) where
 
   return a = State (\state -> (a, state))
-  
-  (>>=) (State sf) g = State (\state -> let (v, newState) = sf state 
+
+  (>>=) (State sf) g = State (\state -> let (v, newState) = sf state
                                         in runState (g v) newState)
 
 readSt = State (\s -> (s, s))
@@ -28,19 +27,28 @@ updateSt f = State (\s -> ((), f s))
 
 
 
-data Rdr r a = Reader{ runReader :: r -> a } 
+data Rdr r a = Reader{ runReader :: r -> a }
+
+instance Functor (Rdr r) where
+  fmap f (Reader rf) = Reader (f.rf)
 
 instance Monad (Rdr r) where
  return x = Reader (\r -> x)
 --(>>=) Rdr r -> (a -> Rdr b) -> Rdr b
- (>>=) reader fReader 
+ (>>=) reader fReader
    = Reader (\r -> runReader (fReader (runReader reader r)) r)
 
 getEnv :: r -> Rdr e r
 getEnv r = Reader (\_ -> r)
 
+--------------------------------------------------------------------------------
 
+data RdrT r m a = ReaderT { runReaderT :: r -> m a}
 
+instance Monad m => Monad (RdrT r m) where
+  return = ReaderT .const.return
+  
+  (>>=) (ReaderT rf) f = ReaderT (\r -> (rf r) >>= (flip runReaderT r.f))
 
 --------------------------------------------------------------------------------
 
@@ -57,6 +65,26 @@ instance Monad m => Monad (MbT m) where
       func f (Just x) = runMaybeT (f x)
 
 --------------------------------------------------------------------------------
+-- LINK 11
+
+newtype StT s m a = StateT { runStateT :: s -> m (a, s) }
+
+instance (Monad m) => Monad (StT s m) where
+  return x = StateT (\s -> return (x, s))
+
+-- (>>=) :: Monad m => m a -> (a -> m b) -> m b
+--  (>>=) :: StT s m a -> (a -> StT s m b) -> StT s m
+  (>>=) (StateT innermonad) f
+    = StateT (\s -> (innermonad s) >>= f')
+     where
+       f' (a,s) = (runStateT (f a)) s
+
+liftST :: Rdr r a -> StT s (Rdr r) a
+liftST reader = StateT (\s -> Reader (\r -> (runReader reader r, s)))
+
+
+--------------------------------------------------------------------------------
+
 
 data RComp r a = R (r -> (r, Either a (RComp r a)))
 
