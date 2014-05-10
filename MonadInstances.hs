@@ -125,18 +125,15 @@ instance Monad (RComp r) where
 newtype Ct r a = Cont {runCont :: (a -> r) -> r}
 
 instance Monad (Ct r) where
-  return arg = Cont thread
-    where
-     thread threadFunc = threadFunc arg
+  return arg = Cont ($arg)
 
-
--- h a g f g' = (g g' x) 
--- (f x)
-
--- (>>=) g f :: (r -> a) -> (a -> r -> b)
--- (>>=) g f x = g (f x) x
+-- LINK 12
 --  (>>=) :: Cont r a -> ( a -> Cont r b) -> Cont r b
 -- g :: (a -> r) -> r
--- f :: a -> Cont ((b -> r) -> r)
+-- f :: a -> (b -> r) -> r
+-- x :: b -> r
+-- g -> f -> ((b -> r) -> r)
+-- a -> Cont ((b->r) -> r)
+  (>>=) g f = Cont (\c -> runCont g (\a -> runCont (f a) c))
 
-  (>>=) (Cnt g) f = undefined
+      

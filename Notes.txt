@@ -156,3 +156,31 @@ instance Monad (RComp r) where
  The state exists beyond the monad.
 
 >
+
+
+< LINK 12
+
+Type Algebra: 
+ Either a b  has the same properties as  a + b, that is it is commutative, associative, (^) distributes over it replacing plus with multiply, multiplication distributes over it.
+
+(a, b)  has the same properties as  a*b
+
+a -> r  has the same properties as  r^a  -- with respect to the other operations
+
+Algebraic operators are defined primarily by their properties and their properties in relation
+to other operators. The semantics they carry differ from set to set.
+
+The elements of our set are primitive types, algaebraic data types and functions which can also be seen as an algaebraic data types.
+
+The Either operator takes two types and gives either one of them. We say that it is analogous to (+) defined over the natural numbers. However its semantics do not seem to overlap. However their properties are identical. Either is commutative, associative as well as the afore mentioned properties.
+
+Similarly for the other two operators their properties line up with the others. So an algebra is simply a set with some operators defined on the elements. (notice the boolean 'and' and 'or' are also algaebraic operators. They dont seem to behave exactly like the (+) and (*) operators though)
+
+The semantics of how Either, (,) and (^) emerge when we observe them in action. Either is simply a type that will give one of its types no matter how many nested eithers. This makes it commutative and associative. 
+(,)  is a type that means you take both of the types presented.
+(^) means give the exponent you have the base.
+interestin behaviour arises when you combine the two, or when function definitions can be expressed in terms of the other operators. 
+(a -> r) -> (b -> r) -> r, is equivalent to (a -> r, b -> r) -> r, HUH?
+Think about it, how would you read the function, given an (a -> r) and a (b -> r) i get an r.
+
+>
