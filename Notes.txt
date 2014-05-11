@@ -1,3 +1,14 @@
+<LINK 0
+   MONAD LAWS:
+
+   return a >>= k  =  k a
+   m >>= return    =  m
+   m >>= (\x -> k x >>= h)  =  (m >>= k) >>= h
+ 
+   fmap f xs  =  xs >>= return . f  =  liftM f xs
+>
+
+
 <LINK 1
 
    Constructing the state monad. The state monad is simply a monad
@@ -93,7 +104,7 @@ thus
 
 >
 
-< LINK 8
+<LINK 8
   We are going to try and build a resourcefule computation.
   The resourceful computation is going to get some resources and proceed
   with computation until all the resources are finished.
@@ -120,12 +131,12 @@ instance Monad (RComp r) where
 
 >
 
-< LINK 9
+<LINK 9
   What this function says is that if we have more resources then take a step and return
   the result passed to us. This function seems to be acting as return.
 >
 
-< LINK 10
+<LINK 10
   The state monad is a context for COMPUTATION. The main thing is the computation. The
   monad provides a mechanism for supplying different contexts to the computation. The
   of what a context is, is not specified leaving it up to the specific monad to decide
@@ -158,7 +169,7 @@ instance Monad (RComp r) where
 >
 
 
-< LINK 12
+<LINK 12
 
 Type Algebra: 
  Either a b  has the same properties as  a + b, that is it is commutative, associative, (^) distributes over it replacing plus with multiply, multiplication distributes over it.
@@ -183,4 +194,15 @@ interestin behaviour arises when you combine the two, or when function definitio
 (a -> r) -> (b -> r) -> r, is equivalent to (a -> r, b -> r) -> r, HUH?
 Think about it, how would you read the function, given an (a -> r) and a (b -> r) i get an r.
 
+>
+
+
+<LINK 13
+  The continuation passing style takes the function to be evaluated next as its argument. It passes the result to the next function It also allows for non local transfers and early exit of a method. In fact it allows you to suspend functions somehow. Should check this out. Lazy evaluation is mainly supported by  the continuation monad.
+FOllowing the continuation passing style, a continuation simply holds the future of the function. When we say future of a function we mean that a function has finished the computation it wishes to perform produces an intermediate value 'a', it takes as an argument the function to be evaluated next and gives the function its intermediate value. This is very similiar to what we have been doing all this time with the chaining computations. We have a computation and we fix the next computation by chaining it together with the result of the previous computation. Thus fixing the next function to be used in the computation that uses the result of the previous computation.
+The continuation monad holds within it the future of a function. That is it holds within it a suspended computation. Giving this suspended computation a future - in the form of a function that takes the value computed so far and returns a result. In order to terminate such a chain we can simply use 'id' as the last function. 
+>
+
+<LINK 14
+  Interesting idea would be to stop using specific monads and try and come up wiht computations that simply need the general properties of monads i.e. computations that can be chained. And where the chaining must be associative. Equally interesting are the idea of Monoids. Monoids are monads that consist of a type, an identity or zero element and a binary operator. They must obey the laws of the identity element. Also the binary operator should be associative. 
 >

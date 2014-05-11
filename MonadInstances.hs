@@ -136,4 +136,3 @@ instance Monad (Ct r) where
 -- a -> Cont ((b->r) -> r)
   (>>=) g f = Cont (\c -> runCont g (\a -> runCont (f a) c))
 
-      
