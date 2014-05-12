@@ -206,3 +206,30 @@ The continuation monad holds within it the future of a function. That is it hold
 <LINK 14
   Interesting idea would be to stop using specific monads and try and come up wiht computations that simply need the general properties of monads i.e. computations that can be chained. And where the chaining must be associative. Equally interesting are the idea of Monoids. Monoids are monads that consist of a type, an identity or zero element and a binary operator. They must obey the laws of the identity element. Also the binary operator should be associative. 
 >
+
+< LINK 15
+Can use symbols for your own operators
+(<>) :: Int -> Int -> Int
+(<>) = (+)
+{-# INLINE (<>) #-}
+infixr 6 <>
+>
+
+
+<
+ LINK 16
+NOTE: This must be read in tandem with the callCC code otherwise it might be weird.
+'func' is a suspended computation that is waiting for a continuation. the argument to func 'f' is the continuation. the suspended computation func is expecting an f and it will give a new continuation 'Ct r a'
+'arg' is also a suspended computation. It is waiting for a function that will go from an 'a' to a 'Ct r b' and will give the final continuation.
+So the action that func does is to get a continuation somehow, lets call it _____ and then give to this continuation 'f'.
+Now comes the interesting part with the _______. The _____ is the argument applied to g. Thus when we use callCC we must give it a function. This function should take as an argument the continutation we want. g Becomes that continuation.
+g is a function that returns a continuation that is waiting for a function, but never uses that function. It goes to the originally supplied continuation.
+arg :: ((a -> Cont r b) -> Cont r a)
+func :: (a -> r) -> r
+f :: a -> r
+g :: a -> Cont r b
+h :: (b -> r) -> r
+bF :: b -> r
+a
+
+>

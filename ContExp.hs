@@ -1,17 +1,14 @@
-module ConExp where
+module ContExp where
 
 import Control.Monad
 import MonadInstances
 
+-- LINK 15
+
+-- LINK 14
+
 -- LINK 13
 
-{-newtype Ct r a = Cont {runCont :: (a -> r) -> r}
-
-instance Monad (Ct r) where
-  return arg = Cont ($arg)
-
-  (>>=) g f = Cont (\c -> runCont g (\a -> runCont (f a) c))
--}
 
 database = [(1, 12), (2, 29)]
 
@@ -31,6 +28,24 @@ throw :: Int -> IO ()
 throw v = (print $ "Error code " ++ (show v))
 
 
-f' :: Int -> Ct (IO ()) Int
-f' v = Cont (\k -> do { when (v > 0) (k v); when (v < 0) $ print "Less than 0"})
-               
+fun :: Int -> String
+fun n = (`runCont` id) $ do
+    str <- callCC $ \exit1 -> do                            -- define "exit1"
+        when (n < 10) (exit1 (show n))
+        let ns = map digitToInt (show (n `div` 2))
+        n' <- callCC $ \exit2 -> do                         -- define "exit2"
+            when ((length ns) < 3) (exit2 (length ns))
+            when ((length ns) < 5) (exit2 n)
+            when ((length ns) < 7) $ do
+                 exit1 ("A")    --escape 2 levels
+            return $ length ns
+        return $ "(ns = " ++ (show ns) ++ ") " ++ (show n')
+    return $ "Answer: " ++ str
+
+
+digitToInt :: Char -> Int
+digitToInt '0' = 0
+digitToInt '1' = 1
+
+intToDigit :: Int -> Char
+intToDigit 0 = '0'
