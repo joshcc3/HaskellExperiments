@@ -136,6 +136,7 @@ instance Monad (Ct r) where
 -- a -> Cont ((b->r) -> r)
   (>>=) g f = Cont (\c -> runCont g (\a -> runCont (f a) c))
 
+
 callCC :: ((a -> Ct r b) -> Ct r a) -> Ct r a
 callCC arg = Cont func
   where

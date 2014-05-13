@@ -146,17 +146,14 @@ instance Monad (RComp r) where
   is a value. The result of the computation is also a value allowing the state computation
   to chain values.
   For the maybe monad, the computation is, if something has failed, then no matter the
-  context we have failed. Otherwise it holds the identity function. Thus it houses
+  context we have failed. Otherwise the context is the identity function. Thus it houses
   no actual computation other than the notion o failure which is even more awesome.
-
-  
 
   Monads are the design patterns of haskell.
   The list monad is interesting. It too does not house any computation. Thus we were wrong
   previously, housing computation is not the only way you can provide a context for computaion.
-  The other way is to provide a context for "computations operating on the list". The list monad can be seen as a context for non-determinism. Thus you can chain together non-deterministic computations. Since non-deterministic computations could result in multiple possible values. The list monad simply keeps track of all of them. Thus its bind function is a simple concatMap. That is a mapping of a non-deterministic computation and then the aggregation of all of those values.
-  A list is provides a context for computation. The context that it provides is non-determinism. 
-  The list monad provides a context for computat
+  A list is provides a context for computation. That is computation performed on the Lst monad may
+  be seen as
   The way to explain it is to imagine computation as an entity. Computation works on instances of types.
   in order to augment the ability of computation without modifying the ability of computation we wrap what
   ot operates on  - the instances of types and
@@ -167,46 +164,8 @@ instance Monad (RComp r) where
  im stupid. Of course there is some intelligence in designing the monads
  what happens is that we wnat to transform a normal stateless monad
  into a stateful monad. We can't access the inner state of the monad.
- The state must exist beyond the monad.
->
+ The state exists beyond the monad.
 
-
-<LINK 12
-
-Type Algebra: 
- Either a b  has the same properties as  a + b, that is it is commutative, associative, (^) distributes over it replacing plus with multiply, multiplication distributes over it.
-
-(a, b)  has the same properties as  a*b
-
-a -> r  has the same properties as  r^a  -- with respect to the other operations
-
-Algebraic operators are defined primarily by their properties and their properties in relation
-to other operators. The semantics they carry differ from set to set.
-
-The elements of our set are primitive types, algaebraic data types and functions which can also be seen as an algaebraic data types. Functions are functors. Representing the reader monad.
-
-The Either operator takes two types and gives either one of them. We say that it is analogous to (+) defined over the natural numbers. However its semantics do not seem to overlap. However their properties are identical. Either is commutative, associative as well as the afore mentioned properties.
-
-Similarly for the other two operators their properties line up with the others. So an algebra is simply a set with some operators defined on the elements. (notice the boolean 'and' and 'or' are also algaebraic operators. They dont seem to behave exactly like the (+) and (*) operators though)
-
-The semantics of how Either, (,) and (^) emerge when we observe them in action. Either is simply a type that will give one of its types no matter how many nested eithers. This makes it commutative and associative. 
-(,)  is a type that means you take both of the types presented.
-(^) means give the exponent you have the base.
-interestin behaviour arises when you combine the two, or when function definitions can be expressed in terms of the other operators. 
-(a -> r) -> (b -> r) -> r, is equivalent to (a -> r, b -> r) -> r, HUH?
-Think about it, how would you read the function, given an (a -> r) and a (b -> r) i get an r.
-
->
-
-
-<LINK 13
-  The continuation passing style takes the function to be evaluated next as its argument. It passes the result to the next function It also allows for non local transfers and early exit of a method. In fact it allows you to suspend functions somehow. Should check this out. Lazy evaluation is mainly supported by  the continuation monad.
-FOllowing the continuation passing style, a continuation simply holds the future of the function. When we say future of a function we mean that a function has finished the computation it wishes to perform produces an intermediate value 'a', it takes as an argument the function to be evaluated next and gives the function its intermediate value. This is very similiar to what we have been doing all this time with the chaining computations. We have a computation and we fix the next computation by chaining it together with the result of the previous computation. Thus fixing the next function to be used in the computation that uses the result of the previous computation.
-The continuation monad holds within it the future of a function. That is it holds within it a suspended computation. Giving this suspended computation a future - in the form of a function that takes the value computed so far and returns a result. In order to terminate such a chain we can simply use 'id' as the last function. 
->
-
-<LINK 14
-  Interesting idea would be to stop using specific monads and try and come up wiht computations that simply need the general properties of monads i.e. computations that can be chained. And where the chaining must be associative. Equally interesting are the idea of Monoids. Monoids are monads that consist of a type, an identity or zero element and a binary operator. They must obey the laws of the identity element. Also the binary operator should be associative. 
 >
 
 
