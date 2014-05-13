@@ -146,14 +146,17 @@ instance Monad (RComp r) where
   is a value. The result of the computation is also a value allowing the state computation
   to chain values.
   For the maybe monad, the computation is, if something has failed, then no matter the
-  context we have failed. Otherwise the context is the identity function. Thus it houses
+  context we have failed. Otherwise it holds the identity function. Thus it houses
   no actual computation other than the notion o failure which is even more awesome.
+
+  
 
   Monads are the design patterns of haskell.
   The list monad is interesting. It too does not house any computation. Thus we were wrong
   previously, housing computation is not the only way you can provide a context for computaion.
-  A list is provides a context for computation. That is computation performed on the Lst monad may
-  be seen as
+  The other way is to provide a context for "computations operating on the list". The list monad can be seen as a context for non-determinism. Thus you can chain together non-deterministic computations. Since non-deterministic computations could result in multiple possible values. The list monad simply keeps track of all of them. Thus its bind function is a simple concatMap. That is a mapping of a non-deterministic computation and then the aggregation of all of those values.
+  A list is provides a context for computation. The context that it provides is non-determinism. 
+  The list monad provides a context for computat
   The way to explain it is to imagine computation as an entity. Computation works on instances of types.
   in order to augment the ability of computation without modifying the ability of computation we wrap what
   ot operates on  - the instances of types and
@@ -164,8 +167,7 @@ instance Monad (RComp r) where
  im stupid. Of course there is some intelligence in designing the monads
  what happens is that we wnat to transform a normal stateless monad
  into a stateful monad. We can't access the inner state of the monad.
- The state exists beyond the monad.
-
+ The state must exist beyond the monad.
 >
 
 
@@ -181,7 +183,7 @@ a -> r  has the same properties as  r^a  -- with respect to the other operations
 Algebraic operators are defined primarily by their properties and their properties in relation
 to other operators. The semantics they carry differ from set to set.
 
-The elements of our set are primitive types, algaebraic data types and functions which can also be seen as an algaebraic data types.
+The elements of our set are primitive types, algaebraic data types and functions which can also be seen as an algaebraic data types. Functions are functors. Representing the reader monad.
 
 The Either operator takes two types and gives either one of them. We say that it is analogous to (+) defined over the natural numbers. However its semantics do not seem to overlap. However their properties are identical. Either is commutative, associative as well as the afore mentioned properties.
 
