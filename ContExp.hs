@@ -49,3 +49,25 @@ digitToInt '1' = 1
 
 intToDigit :: Int -> Char
 intToDigit 0 = '0'
+{- This is a bogus function that is present simply to test the Continuation monad
+   When v < 0, it returns    
+-}
+cT v a
+ = runCont (callCC f) print
+  where
+    f exit1 
+     = do
+        when (v <  0) $ do { exit1 "V less than zero"; return ()}
+        when (v <  10 && v > 0) $ do { exit1 $ ("Square root of v is " ++) $ show $ sqrt $ v*v; 
+                              return () }
+        when (v == 0) 
+          (do { 
+            callCC $ \exit2 -> 
+               do {
+                 when (a < 0) $ do { exit1 ("A is less than 0"); return () };
+                 when (a < 10) $ do { exit2 ("A is less than 10"); return () };
+                 exit1 $ ("The value of a - 10 is " ++) $ show $ a - 10;
+               };
+          } >> return ())
+        return "V is 0 and A is greater than 0 but A is lesser than 10"
+               
