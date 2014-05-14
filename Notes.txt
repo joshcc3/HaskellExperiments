@@ -233,3 +233,24 @@ bF :: b -> r
 a
 
 >
+
+< LINK 17
+
+Over here we have an approach to handling exceptions.
+ while most languages must build such capabilities into
+ the language in Haskell one can create these control
+ flows all on your own 
+>
+
+< LINK 18
+  We try and come up with a way to let any monadic compuation
+  report an exception
+>
+
+< LINK 19 
+  We have implemented a round robin scheduler over here to interleave the processes.
+  The fork instruction, enqueues the process following the one it is about to execute,
+  then executes the current one and then dequeues the next one. The yeild instruction
+  suspends the computation by queue-ing the rest of the computation and then dequeues.
+  The exhaust function exhausts all elements in our queue.
+>

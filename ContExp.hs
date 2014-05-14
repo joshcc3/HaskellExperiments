@@ -10,48 +10,6 @@ import MonadInstances
 -- LINK 13
 
 
-database = [(1, 12), (2, 29)]
-
-
--- lets say we want to create a function that can return early from a
--- function and go somewhere else
-
-f :: Int -> (Int -> IO ()) -> IO ()
-f v k 
-  = do 
-     Just x <- return $lookup v database
-     when (x > 5) $ do { k x; (print "Exiting"); return () }
-     return ()
-     
-
-throw :: Int -> IO ()
-throw v = (print $ "Error code " ++ (show v))
-
-
-fun :: Int -> String
-fun n = (`runCont` id) $ do
-    str <- callCC $ \exit1 -> do                            -- define "exit1"
-        when (n < 10) (exit1 (show n))
-        let ns = map digitToInt (show (n `div` 2))
-        n' <- callCC $ \exit2 -> do                         -- define "exit2"
-            when ((length ns) < 3) (exit2 (length ns))
-            when ((length ns) < 5) (exit2 n)
-            when ((length ns) < 7) $ do
-                 exit1 ("A")    --escape 2 levels
-            return $ length ns
-        return $ "(ns = " ++ (show ns) ++ ") " ++ (show n')
-    return $ "Answer: " ++ str
-
-
-digitToInt :: Char -> Int
-digitToInt '0' = 0
-digitToInt '1' = 1
-
-intToDigit :: Int -> Char
-intToDigit 0 = '0'
-{- This is a bogus function that is present simply to test the Continuation monad
-   When v < 0, it returns    
--}
 cT v a
  = runCont (callCC f) print
   where
@@ -75,3 +33,28 @@ cT v a
 main v a 
   = print "Entering cT now" >> cT v a  >> print "Done"
     
+
+
+-- LINK 17
+divExcpt :: Int -> Int -> (String -> Ct r Int) -> Ct r Int
+divExcpt n d handler
+ = callCC $
+   \ok -> do {
+      err <- callCC $ 
+      \notOk -> do {
+          when (d == 0) $ notOk "Denominator is zero";
+          ok $ div n d
+      };
+      handler err
+   }
+
+
+data Error = Error deriving (Eq, Ord, Show)
+
+-- LINK 18
+try :: ((Error -> Ct r b) -> Ct r ()) -> (Error -> Ct r b) -> Ct r ()
+try m handler
+ = callCC $ \ok -> do
+    err <- (callCC (\notOk -> m handler >> ok ()))
+    handler err
+    return ()

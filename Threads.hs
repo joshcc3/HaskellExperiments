@@ -5,7 +5,7 @@ import Control.Applicative
 import Control.Monad.Cont
 import Control.Monad.State
 
- 
+
 -- The CoroutineT monad is just ContT stacked with a StateT containing the suspended coroutines.
 newtype CoroutineT r m a = CoroutineT {runCoroutineT' :: ContT r (StateT [CoroutineT r m ()] m) a}
     deriving (Functor,Applicative,Monad,MonadCont,MonadIO)
@@ -61,7 +61,18 @@ exhaust = do
 runCoroutineT :: Monad m => CoroutineT r m r -> m r
 runCoroutineT = flip evalStateT [] . flip runContT return . runCoroutineT' . (<* exhaust)
 
+-- newtype CoroutineT r m a = CoroutineT {runCoroutineT' :: ContT r (StateT [CoroutineT r m ()] m) a}
+-- runContT :: ContT r m a -> (a -> m r) -> m r
 
+-- flip evalStateT [] :: Monad m => StateT [a1] m a -> m a
+-- runContT :: Monad m => ContT r m a -> (a -> m r) -> m r
+-- flip runContT return :: Monad m' => ContT r m' a -> m' r
+-- m' = StateT [a1] m
+-- flip runContT return :: ContT r (StateT [a1] m) a -> (StateT [a1] m) r
+-- runCoroutineT' :: CoroutineT r m a -> ContT r (StateT [CoroutineT r m ()] m) a
+-- a1 = CoroutineT r m ()
+-- flip runContT return :: ContT r (StateT [CoroutineT r m ()] m) a -> (StateT [CoroutineT r m ()] m) r
+-- (<* exhaust) :: CoroutineT r m ()
 
 
 --------------------------------------------------------------------------------
@@ -71,9 +82,9 @@ printOne n = do
     liftIO (print n)
     yield
 
+-- LINK 19
 example :: IO ()
 example = runCoroutineT $ do
     fork $ replicateM_ 3 (printOne 3)
     fork $ replicateM_ 4 (printOne 4)
     replicateM_ 2 (printOne 2)
-
