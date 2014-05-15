@@ -56,24 +56,13 @@ exhaust = do
         then yield >> exhaust
         else return ()
 
+
+trial :: Monad m => CoroutineT r m r -> CoroutineT r m r
+trial = (<* exhaust)
  
 -- Runs the coroutines in the base monad.
 runCoroutineT :: Monad m => CoroutineT r m r -> m r
-runCoroutineT = flip evalStateT [] . flip runContT return . runCoroutineT' . (<* exhaust)
-
--- newtype CoroutineT r m a = CoroutineT {runCoroutineT' :: ContT r (StateT [CoroutineT r m ()] m) a}
--- runContT :: ContT r m a -> (a -> m r) -> m r
-
--- flip evalStateT [] :: Monad m => StateT [a1] m a -> m a
--- runContT :: Monad m => ContT r m a -> (a -> m r) -> m r
--- flip runContT return :: Monad m' => ContT r m' a -> m' r
--- m' = StateT [a1] m
--- flip runContT return :: ContT r (StateT [a1] m) a -> (StateT [a1] m) r
--- runCoroutineT' :: CoroutineT r m a -> ContT r (StateT [CoroutineT r m ()] m) a
--- a1 = CoroutineT r m ()
--- flip runContT return :: ContT r (StateT [CoroutineT r m ()] m) a -> (StateT [CoroutineT r m ()] m) r
--- (<* exhaust) :: CoroutineT r m ()
-
+runCoroutineT = flip evalStateT [] . flip runContT return . runCoroutineT' {-. (<* exhaust)-}
 
 --------------------------------------------------------------------------------
 

@@ -149,3 +149,14 @@ callCC arg = Cont func
 --           h :: (b -> r) -> r
              h bF = f a
 -- LINK 16
+
+--------------------------------------------------------------------------------
+
+newtype ContT r m a = ContT { runContT :: (a -> m r) -> m r }
+
+instance Monad m => Monad (ContT r m) where
+
+  return a = ContT (\c -> c a)
+
+--  (>>=) :: ContT r m a -> (a -> ContT r m b) -> ContT r m b
+  (>>=) a f = ContT (\finalCont -> runContT a (\a -> runContT (f a) finalCont))
