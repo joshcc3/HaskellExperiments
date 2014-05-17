@@ -233,3 +233,7 @@ bF :: b -> r
 a
 
 >
+
+<
+  The free monad. Is the nothing but the simplest implementation required to be a monad. The implementation is free from everything except the monad
+>

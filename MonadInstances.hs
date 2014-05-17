@@ -149,3 +149,13 @@ callCC arg = Cont func
 --           h :: (b -> r) -> r
              h bF = f a
 -- LINK 16
+
+--------------------------------------------------------------------------------
+
+data Free f r = Free (f (Free f r)) | Pure r
+
+instance (Functor f) => Monad (Free f) where
+
+  return = Pure 
+
+  (>>=) (Free f) func = Free (fmap (>>= func) f)
