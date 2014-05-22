@@ -137,8 +137,14 @@ instance Monad (Ct r) where
   (>>=) g f = Cont (\c -> runCont g (\a -> runCont (f a) c))
 
 
-callCC :: ((a -> Ct r b) -> Ct r a) -> Ct r a
-callCC arg = Cont func
+callCC :: Monad m => (( a -> ContT r m b) -> ContT r m a) -> ContT r m a
+callCC f = ContT (\k -> runContT (f (\a -> ContT (\b -> k a))) k)
+
+
+
+
+callCC' :: ((a -> Ct r b) -> Ct r a) -> Ct r a
+callCC' arg = Cont func
   where
 --  func :: (a -> r) -> r
     func f = runCont (arg g) f
@@ -149,3 +155,38 @@ callCC arg = Cont func
 --           h :: (b -> r) -> r
              h bF = f a
 -- LINK 16
+
+newtype ContT r m a = ContT { runContT :: (( a -> m r) -> m r) }
+
+instance Monad m => Monad (ContT r m) where
+  return a = ContT (\f -> f a)
+  (>>=) m f = ContT (\func -> runContT m (\a -> runContT (f a) func))
+
+--------------------------------------------------------------------------------
+
+-- Free monad
+
+data Free f a  = Free (f (Free f a)) | Pure a
+
+instance Functor f => Monad (Free f) where
+
+  return = Pure
+
+  (>>=) (Pure a) f = f a
+  (>>=) (Free x) f = Free (fmap (>>= f) x)
+
+{-
+data FreeF f a x = Pure' a | Free' f x
+
+newtype FreeT f m a =
+    FreeT { runFreeT :: m (FreeF f a (FreeT f m a)) }
+
+instance (Functor f, Monad m) => Monad (FreeT f m) where
+
+  return a = FreeT (return (Pure' a))
+
+  FreeT m >>= f = FreeT $ m >>= \v -> case v of
+        Pure a -> runFreeT (f a)
+        Free w -> return (Free (fmap (>>= f) w))
+
+-}

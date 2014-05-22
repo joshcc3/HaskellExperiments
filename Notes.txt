@@ -1,4 +1,4 @@
-<LINK 0
+ <LINK 0
    MONAD LAWS:
 
    return a >>= k  =  k a
@@ -232,4 +232,10 @@ h :: (b -> r) -> r
 bF :: b -> r
 a
 
+>
+
+<
+  For the game, the type of architecture we want is that each client has a dedicated 2-way channel with the server and there is also a broadcast channel which the server and the clients share. 
+
+ The game itself - units that co-operate against some obstacles to achieve a goal. We want a minimum possible, definition of a unit.
 >
