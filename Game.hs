@@ -73,5 +73,58 @@ strat2 = do
 An example of a combinable strategy is for example - one bot wants to
 consistently follow another bot. Therefore the hole in the bot that wants
 to follow the other bot should allow for any strategy to fill that hole.
-What does composing these strategies mean. Composing the strategies means
-that-}
+What does composing these strategies mean.
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{-
+  A strategy is combinable if it has a hole in it. We can combine the strategies of two holes
+-}
