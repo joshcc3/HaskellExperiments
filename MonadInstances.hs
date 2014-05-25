@@ -97,7 +97,6 @@ instance (Monad m) => Monad (StT s m) where
 liftST :: Rdr r a -> StT s (Rdr r) a
 liftST reader = StateT (\s -> Reader (\r -> (runReader reader r, s)))
 
-
 --------------------------------------------------------------------------------
 
 
