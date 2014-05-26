@@ -78,7 +78,8 @@ stepWriter t stat@(Free (RotateR i angle n))
 stepWriter t stat@(Free (RotateL i angle n)) 
    = MI.liftWT [Log {time = t, instr = liftF (RotateL i angle ()) }] (MI.State (step stat))
 
-{-
-   so what we want is a writer that transforms the state monad and
-   adds to a log of all the instructions we execute. 
--}
+
+interleave :: Free UnitInstr r -> Free UnitInstr r -> Free UnitInstr r
+interleave (Pure _) x = x
+interleave x (Pure _) = x
+interleave (Free instr) ast2 = Free (fmap (interleave ast2) instr)
