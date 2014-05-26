@@ -1,5 +1,7 @@
 module MonadInstances where
 
+import Data.Monoid
+
 --------------------------------------------------------------------------------
 
 {-
@@ -116,6 +118,33 @@ instance Monad (RComp r) where
 
 
 -- LINK 6
+
+--------------------------------------------------------------------------------
+
+-- Writer monad
+newtype Writer w a = Writer {runWriter :: (a, w)}
+
+instance (Monoid w) => Monad (Writer w) where
+  return a  = Writer (a, mempty)
+  (>>=) (Writer (a, l)) f = Writer (a', w')
+    where
+      Writer (a', w'') = f a
+      w'        = mappend l w''
+
+
+newtype WriterT w m a = WriterT { runWriterT :: m (a, w) }
+
+instance (Monoid w, Monad m) => Monad (WriterT w m) where
+  return a = WriterT $ return (a, mempty)
+  (>>=) (WriterT m1) f = WriterT $
+    do
+      (a, w)  <- m1
+      (b, w') <- runWriterT $ f a
+      return (b, mappend w w')
+    
+
+liftWT :: (Monoid w, Monad m) => w -> m a -> WriterT w m a
+liftWT w m = WriterT $ m >>= \a -> return (a, w)
 
 --------------------------------------------------------------------------------
 
