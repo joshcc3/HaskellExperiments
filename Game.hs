@@ -1,95 +1,54 @@
 {-# LANGUAGE DeriveFunctor, TupleSections #-}
 
-import qualified Control.Category as C
---import qualified Control.Monad as M
-import qualified MonadInstances as MI
+import Control.Monad.State
+import Thread
 import qualified Data.Map as M
-import Data.Monoid
 
-data Free f r = Free (f (Free f r)) | Pure r
-
-instance Functor f => Monad (Free f) where
-
-   return = Pure
-
-   (>>=) (Pure a) f    = f a
-   (>>=) (Free f) func = Free (fmap (>>= func) f)
+data Unit = Unit { orientation :: Int, pos :: (Double, Double), stepLen :: Double } deriving (Show)
 
 
-liftF :: Functor f => f r -> Free f r
-liftF = Free . (fmap Pure)
-
-data Unit = Unit { unitID :: Int, orientation :: Double, pos :: (Double, Double), stepLen :: Double } deriving (Show)
-
-
-data UnitInstr next = Front Int StepLength next | Back Int StepLength next | RotateL Int Double next | RotateR Int Double next | Done
-
-data LogEntry a = Log { time :: Int, instr :: Free UnitInstr a }
- 
 type StepLength = Double
 
 type ID = Int
 
 type GameState = M.Map ID Unit
 
-type StatefulUnit a = MI.St GameState (Free UnitInstr a)
 
-type LoggedUnit b a   = MI.WriterT [LogEntry b] (MI.St GameState) (Free UnitInstr a)
+toRad :: Int -> Double
+toRad d = (fromIntegral d) * pi/180
 
+newPos (x, y) step orientation
+ = (cos (toRad orientation) * step + x, sin (toRad orientation) * step + y)
 
-instance Functor UnitInstr where
-  fmap f (Front   u s n) = Front   u s (f n)
-  fmap f (Back    u s n) = Back    u s (f n)
-  fmap f (RotateL u d n) = RotateL u d (f n)
-  fmap f (RotateR u d n) = RotateR u d (f n)
-  fmap f Done            = Done
+newAngle initial rotation = (360 + initial + rotation) `mod` 360
 
+mov :: Int -> StepLength -> State GameState ()
+mov i step
+ = do
+   s <- get
+   put (M.update updFunc i s)
+   return ()
+   where
+     updFunc :: Unit -> Maybe Unit
+     updFunc u@(Unit {pos = p, orientation = o}) = Just $ u{pos = newPos p step o} 
 
-
-move (x, y) step orientation
- = (cos (orientation) * step * x, sin (orientation) * step * y)
-
-
-step :: Free UnitInstr () -> GameState -> (Free UnitInstr (), GameState)
-step (Pure ()) s = (Pure (), s)
-step (Free (Front i step n)) s = (n, M.update f i s)
-  where
-    f (u@Unit{pos = initPos, stepLen = s, orientation = o}) = Just $u{pos = move initPos s o}
-step (Free (Back i step n)) s = (n, M.update f i s)
-  where
-    f (u@Unit{pos = initPos, stepLen = s, orientation = o}) = Just $u{pos = move initPos (-s) o}
-step (Free (RotateR i angle n)) s = (n, M.update f i s)
-  where
-    f (u@Unit{orientation = o}) = Just $u{orientation = angle + o}
-step (Free (RotateL i angle n)) s = (n, M.update f i s)
-  where
-    f (u@Unit{orientation = o}) = Just $u{orientation = angle + o}
--- use a writer to put note changes in the game and serialize those changes
+rot :: Int -> Int -> State GameState ()
+rot i angle 
+  = do
+    s <- get
+    put (M.update updFunc i s)
+    return ()
+    where
+      updFunc :: Unit -> Maybe Unit
+      updFunc u@(Unit {orientation = o}) = Just $ u { orientation = newAngle o angle }
 
 
-stepWriter :: Int -> Free UnitInstr () -> LoggedUnit () ()
-stepWriter t (Pure ()) = return $ return ()
-stepWriter t stat@(Free (Front i s n)) 
-   = MI.liftWT [Log {time = t, instr = liftF (Front i s ()) }] (MI.State (step stat))
-stepWriter t stat@(Free (Back i s n)) 
-   = MI.liftWT [Log {time = t, instr = liftF (Back i s ()) }] (MI.State (step stat))
-stepWriter t stat@(Free (RotateR i angle n)) 
-   = MI.liftWT [Log {time = t, instr = liftF (RotateR i angle ()) }] (MI.State (step stat))
-stepWriter t stat@(Free (RotateL i angle n)) 
-   = MI.liftWT [Log {time = t, instr = liftF (RotateL i angle ()) }] (MI.State (step stat))
+strat1
+ = replicateM_ 12 $ do
+    replicateM_ 5 (mov 1 10)
+    rot 1 180
 
 
-interleave :: Free UnitInstr r -> Free UnitInstr r -> Free UnitInstr r
-interleave (Pure _) x = x
-interleave x (Pure _) = x
-interleave (Free instr) ast2 = Free (fmap (interleave ast2) instr)
 
-{- 
-so we have created a simple language for the game. We can interleave AST's. The next step is to allow for the co-operation among units. The way we allow co-operation among the units is by creating holes in the AST. We have a morphism that takes a AST of type 'a' and an AST of type 'b' and relates them creating a single AST. A hole will be a placeholder for an AST. It will have associated with it a function. Each AST can have only a single hole. For an example, lets say that we have a bot that wants to follow another bot everywhere. The bot will first have to get to some position relative to the original bot, then for every move of the original bot it will move in the exact same direction.
-in order to simplify our model, in order to combine two ASTs 'a' and 'b', the type of the second AST must be compatible with the function in the hole ofth first one. 
-So:
-We have only one hole per AST.
-Each hole contains a function.
-When combining AST 'a' and AST 'b', 'b' will be interleaved with the instructions of the AST generated by mapping the function in the hole of 'a' with the AST of 'b'. This goes well with the composability of holes (type wise), does it go well with the instructions.. we'll just have to wait and see won''t we :P
--- how to handle conflicting actions in different parts of the tree when trying to co-operate between units.
--}
+
+  
