@@ -30,7 +30,10 @@ instance Arrow Coroutine where
   
 
 
-
+instance ArrowLoop Coroutine where
+  
+--  loop :: Coroutine (b,d) (c,d) -> Coroutine b c
+  loop co = Coroutine (\b -> let ((c, d), co') = runC co (b, d) in (c, loop co')) 
 
 
 {-

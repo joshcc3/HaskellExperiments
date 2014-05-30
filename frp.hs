@@ -1,15 +1,15 @@
+module FRP where
+
 import Coroutine
 import Control.Arrow
 import Control.Monad
 import qualified Control.Category as C
 
 
-{- Co-routines are a type of stream processor. We get a stream of events and the co-routine processes the event with some function. We can think of a unit as an object that behaves like an arrow. The units position depends on keyboard events and the position of other co-routines it is co-operating with. the collisions depend on the units position -}
+{- Co-routines are a type of stream processor. We get a stream of events and the co-routine processes the event with some function. We can think of a unit as an object that behaves like an arrow. The units position depends on keyboard events and the position of other co-routines it is co-operating with. the collisions depend on the units position. -}
 
 type Event a = [a]
-type UnitPosition = (Double, Double)
-type KeyboardEvent = Int
-type Collision = (Int, Int, Int)
+
 
 -- Map events into different kinds of events
 mapE :: (e -> e') -> Coroutine (Event e) (Event e')
@@ -47,6 +47,9 @@ withPrevious first = Coroutine $ \i -> ((i, first), step i) where
 --   the first call.
 delay :: a -> Coroutine a a
 delay a = withPrevious a >>> arr snd
+
+integrate :: Num a => a -> Coroutine a a
+integrate a = Coroutine (\i -> (a, integrate (a+i)))
 
 
 -- | Derivate a numerical value over time (i.e. return the delta between current
