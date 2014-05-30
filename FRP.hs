@@ -64,3 +64,12 @@ watch f = Coroutine $ \i ->
         then ([i], watch f)
         else ([], watch f)
 
+
+restartWhen :: Coroutine a b -> Coroutine (a, Event e) b
+restartWhen co = Coroutine (step co)
+  where
+    step :: Coroutine a b -> (a, Event e) -> (b, Coroutine (a, Event e) b)
+    step co (a, e) | null e    = (b, Coroutine (step co'))
+                   | otherwise = (b, Coroutine (step co))
+      where
+        (b, co') = runC co a

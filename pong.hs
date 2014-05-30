@@ -1,4 +1,4 @@
-
+{-# LANGUAGE Arrows #-}
 import Coroutine
 import FRP
 import Control.Monad
@@ -9,26 +9,27 @@ import Control.Arrow
 Over here a co-routine is a routine that enacts the behavious of the component. We model a component as a stream processor (an arrow). We have some time varying values such as the player position. Traditionally this is a function from Time -> Position. We can discretize the time and represent it as a stream thus every packet is the value of the function (Time -> Position) at the time = position of the packet. The stream processor will take these inputs and produce an output from them. More specifically from the point of view of the pong game, the players position is dependent on its previous position and the current speed. In fact position is the integration of the speed + the start position.
 -}
 
-type Pos  = (Int, Int)
-type BallPos = Pos
-type PlayerPos = Pos
+type Pos           = (Int, Int)
+type BallPos       = Pos
+type PlayerPos     = Pos
 data KeyboardEvent = UP | DOWN | NONE
-type Vector  = (Int, Int)
-data BallBounce = VBounce | HBounce
+type Vector        = (Int, Int)
+data BallBounce    = VBounce | HBounce
+type Rect          = (Int, Int, Int, Int)
 
-player1Y    = 20
-player1X    = 10
-playerVel   = 2
-startBall   = (50,50)
-initBallVel = (10,10)
-cieling     = 0
-flr       = 500
-rightWall   = 750
-leftWall    = 0
-plWidth     = 5
-plHeight    = 10
+player1Y           = 20
+player1X           = 10
+playerVel          = 2
+startBall          = (50,50)
+initBallVel        = (10,10)
+cieling            = 0
+flr                = 500
+rightWall          = 750
+leftWall           = 0
+plWidth            = 5
+plHeight           = 10
 
-playerPos :: Coroutine KeyboardEvent Pos
+playerPos :: Coroutine KeyboardEvent PlayerPos
 playerPos = playerSpeed >>> integrate player1Y >>> (arr (\y -> (player1X, y)))
 
 playerSpeed :: Coroutine KeyboardEvent Int
@@ -49,6 +50,7 @@ ballPos = loop $ arr (\(ppos, bpos) -> ((ppos, bpos), bpos))
           >>> ballSpeed
           >>> vecIntegrate startBall
           >>> withPrevious initBallVel
+
 
 {-
 ballPos :: Coroutine (Event BallBounce) Pos
@@ -87,3 +89,15 @@ collision ((bx, by), (px, py)) =    bx <= px + plWidth
                                  && by >= py 
                                  && by <= py + plHeight
 
+
+resetBallPos :: Coroutine PlayerPos BallPos
+resetBallPos = loop $ restartWhen ballPos >>> arr id &&& watch outOfBounds 
+  where
+    outOfBounds (x,_) = x < leftWall || x > rightWall
+
+
+game :: Coroutine KeyboardEvent [Rect]
+game = playerPos >>> arr id &&& resetBallPos >>> (arr $ \(ppos, bpos) -> map makeRect [ppos,bpos])
+
+makeRect :: Pos -> Rect
+makeRect = undefined
