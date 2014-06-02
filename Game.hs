@@ -28,9 +28,9 @@ config = map (, Dc rad) [1..num]
 delta = 0.1
 
 
-aiPositions :: Dots -> Coroutine a Dots
-aiPositions initialDots
-  = loop $ arr snd >>> foldl f (arr $ \_ -> []) (zip [1..num] collisionList) >>> withPrevious initialDots
+aiDots :: Dots -> Coroutine a Dots
+aiDots initialDots
+  = loop $ arr snd >>> foldl f (arr $ const []) (zip [1..num] collisionList) >>> withPrevious initialDots
   where
     f ::    Coroutine Dots Dots
          -> (Index, Coroutine (Index, Dots) (Event Collision)) 
@@ -39,15 +39,29 @@ aiPositions initialDots
       where
         g :: Coroutine Dots Dots
         g =     arr (i,) 
-            >>> c' 
-            >>> arr func 
-            >>> vecIntegrate initialVel 
-            >>> vecIntegrate initialPos &&& arr id 
+            >>> c'
+            >>> dotPos (arr accVecResolver) initialVel initialPos 
             >>> arr (\(p,v) -> [(i, Dot p v)])
-        func :: Event Collision -> Vector Double
-        func []   = (0,0)
-        func _ = undefined 
         Just (Dot initialPos initialVel) = lookup i initialDots
+
+{-dotPos ::  
+            Coroutine a (Vector Double) 
+        -> (Vector Double) 
+        ->  Pos 
+        ->  Coroutine a (Pos, Vector Double)-}
+dotPos accVecGen
+  = ((accVecGen >>>).). pos
+
+
+pos ::    (Vector Double) 
+          ->  Pos 
+          ->  Coroutine (Vector Double) (Pos, Vector Double)
+pos initialVel initialPos 
+   =     vecIntegrate initialVel 
+     >>> vecIntegrate initialPos &&& arr id
+
+--------------------------------------------------------------------------------
+-- Physics
 
 collisionList = collisions:collisionList
 
@@ -60,9 +74,18 @@ collisions = arr (\(i, ds) -> flip filter  (map (i,) [1..num]) (filterFunc ds))
        where
          collides :: (Dot, Dot) -> Bool
          collides ((Dot (x,y) _), (Dot (x',y') _))
-           = (dist (x'-x, y'-y) - rad + rad') < delta
+           = (dist (x'-x, y'-y) - rad - rad') < delta
          Just (Dc { radius = rad }) = lookup d config
          Just  (Dc { radius = rad' }) = lookup d' config
+
+
+accVecResolver :: Event Collision -> Vector Double
+accVecResolver []  = (0,0)
+accVecResolver _   = undefined 
+
+
+dist (a,b) = sqrt (a**2 + b**2)
+
 
 
 --------------------------------------------------------------------------------
@@ -74,7 +97,5 @@ al (Just x) = x
 allPairs :: [a] -> [(a,a)]
 allPairs [] = []
 allPairs (a:as) = map (a,) as ++ (allPairs as)
-
-dist (a,b) = sqrt (a**2 + b**2)
 
 vecIntegrate (x,y) = integrate x *** integrate y

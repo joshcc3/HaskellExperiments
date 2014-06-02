@@ -73,3 +73,4 @@ restartWhen co = Coroutine (step co)
                    | otherwise = (b, Coroutine (step co))
       where
         (b, co') = runC co a
+
