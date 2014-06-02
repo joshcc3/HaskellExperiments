@@ -30,7 +30,7 @@ delta = 0.1
 
 aiDots :: Dots -> Coroutine a Dots
 aiDots initialDots
-  = loop $ arr snd >>> foldl f (arr $ const []) (zip [1..num] collisionList) >>> withPrevious initialDots
+  = loop $ arr snd >>> foldl f (constC []) (zip [1..num] collisionList) >>> withPrevious initialDots
   where
     f ::    Coroutine Dots Dots
          -> (Index, Coroutine (Index, Dots) (Event Collision)) 
@@ -38,17 +38,17 @@ aiDots initialDots
     f c (i, c') = c &&& g >>> zipE
       where
         g :: Coroutine Dots Dots
-        g =     arr (i,) 
+        g =     arr (i,)
             >>> c'
-            >>> dotPos (arr accVecResolver) initialVel initialPos 
+            >>> dotPos (arr collAccVecResolver) initialVel initialPos 
             >>> arr (\(p,v) -> [(i, Dot p v)])
         Just (Dot initialPos initialVel) = lookup i initialDots
 
-{-dotPos ::  
+dotPos ::  
             Coroutine a (Vector Double) 
         -> (Vector Double) 
         ->  Pos 
-        ->  Coroutine a (Pos, Vector Double)-}
+        ->  Coroutine a (Pos, Vector Double)
 dotPos accVecGen
   = ((accVecGen >>>).). pos
 
@@ -79,9 +79,9 @@ collisions = arr (\(i, ds) -> flip filter  (map (i,) [1..num]) (filterFunc ds))
          Just  (Dc { radius = rad' }) = lookup d' config
 
 
-accVecResolver :: Event Collision -> Vector Double
-accVecResolver []  = (0,0)
-accVecResolver _   = undefined 
+collAccVecResolver :: Event Collision -> Vector Double
+collAccVecResolver []  = (0,0)
+collAccVecResolver _   = undefined 
 
 
 dist (a,b) = sqrt (a**2 + b**2)

@@ -23,6 +23,12 @@ filterE = arr . filter
 constE :: e -> Coroutine (Event e') (Event e)
 constE = mapE . const
 
+constC :: a -> Coroutine b a
+constC = arr . const
+
+idC :: Coroutine a a
+idC = arr id
+
 -- Merge two time varying values using a combining function
 zipWithC :: (a -> b -> c) -> Coroutine (a, b) c
 zipWithC = arr . uncurry
