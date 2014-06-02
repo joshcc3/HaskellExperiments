@@ -16,11 +16,14 @@ type Pos    = (Double, Double)
 type Radius = Double
 type DotPos = Pos
 type Vector a = (a, a)
+type Acceleration = Vector Double
+type Velocity = Vector Double
 type Index = Int
 type Collision = (Index, Index)
 data Dot = Dot Pos (Vector Double)
 type Dots = [(Index, Dot)]
 data DotConfig = Dc { radius :: Double }
+
 
 num = 10
 rad = 10
@@ -39,23 +42,23 @@ aiDots initialDots
       where
         g :: Coroutine Dots Dots
         g =     arr (i,)
-            >>> c'
-            >>> dotPos (arr collAccVecResolver) initialVel initialPos 
+            >>> c' &&& idC
+            >>> dotPos (arr collAccVecResolverC) initialVel initialPos 
             >>> arr (\(p,v) -> [(i, Dot p v)])
         Just (Dot initialPos initialVel) = lookup i initialDots
 
 dotPos ::  
-            Coroutine a (Vector Double) 
-        -> (Vector Double) 
+            Coroutine a Acceleration 
+        ->  Velocity 
         ->  Pos 
-        ->  Coroutine a (Pos, Vector Double)
+        ->  Coroutine a (Pos, Velocity)
 dotPos accVecGen
   = ((accVecGen >>>).). pos
 
 
-pos ::    (Vector Double) 
+pos ::    Velocity 
           ->  Pos 
-          ->  Coroutine (Vector Double) (Pos, Vector Double)
+          ->  Coroutine (Acceleration) (Pos, Velocity)
 pos initialVel initialPos 
    =     vecIntegrate initialVel 
      >>> vecIntegrate initialPos &&& arr id
@@ -79,10 +82,30 @@ collisions = arr (\(i, ds) -> flip filter  (map (i,) [1..num]) (filterFunc ds))
          Just  (Dc { radius = rad' }) = lookup d' config
 
 
-collAccVecResolver :: Event Collision -> Vector Double
-collAccVecResolver []  = (0,0)
-collAccVecResolver _   = undefined 
+collAccVecResolverC :: (Event Collision, (Index, Dots)) -> Acceleration
+collAccVecResolverC ([],_)  = (0,0)
+collAccVecResolverC ((i,i'):cs, (index,ds)) = (xAcc'', yAcc'')
+  where
+    (xAcc'', yAcc'') = (xAcc + xAcc', yAcc + yAcc')
+    (xAcc, yAcc)    = collAccVecResolver (pos, vel) (pos', vel')
+    (xAcc', yAcc')   = collAccVecResolverC (cs, (index,ds))
+    Just (Dot pos vel) = lookup i ds
+    Just (Dot pos' vel') = lookup i' ds
 
+
+collAccVecResolver :: (Pos, Velocity) -> (Pos, Velocity) -> Acceleration
+collAccVecResolver ((x,y), _) ((x',y'), v')
+  = project v' normal
+  where
+    normal = (y - y', x - x)
+
+
+project (x,y) v = (x' * comp, y' * comp)
+   where
+     (x', y') = unit v
+     comp     = x*x' + y*y'
+
+unit (x,y) = (x / (dist (x, y) ), y/ (dist (x, y)) )
 
 dist (a,b) = sqrt (a**2 + b**2)
 
