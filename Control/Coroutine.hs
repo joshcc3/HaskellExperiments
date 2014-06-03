@@ -1,4 +1,4 @@
-module Coroutine where
+module Control.Coroutine where
 
 import Control.Category
 import qualified Prelude as P

@@ -1,8 +1,15 @@
 {-# LANGUAGE Arrows, TupleSections, FlexibleInstances #-}
 
+module Dots.Game(GameLogic, game) where
+
 import Control.Arrow
-import Coroutine
-import FRP
+import Control.Coroutine
+import Control.Coroutine.FRP
+
+import Dots.Keyboard
+import Dots.Controls
+import Dots.Rect hiding (Pos)
+
 
 {- 
 We want to make a simple game where there are some dots (circles). Each of these dots move in a fixed path. When the dots collide they bounce off according to the rules of physics. In addition the user manually controls one dot. Up scales the speed vector up, back scales the speed vector down until it reflects it across the axis. Left changes the speed vector by a constant angle in the anti clockwise direction. Right changes the speed vector by a constant angle in the clockwise direction. The bouncing of the dots is effected by the reflection of the speed vector against the tangent to the point of contact between the two dots. 
@@ -23,13 +30,19 @@ type Collision = (Index, Index)
 data Dot = Dot Pos (Vector Double)
 type Dots = [(Index, Dot)]
 data DotConfig = Dc { radius :: Double }
+type GameLogic = Coroutine Keyboard Rects
 
-
-num = 10
+num = 3
 rad = 10
 config = map (, Dc rad) [1..num]
 delta = 0.1
+initialSit = [(1, Dot (20,20) (10,10)), (2, Dot (10,40) (5, 9)), (3, Dot (50, 50) (4 ,5))]
 
+game :: GameLogic
+game 
+  = aiDots initialSit >>> arr (\ds -> foldl (\a -> \b -> a ++ [mkRect (snd b)]) [] ds)
+
+mkRect = undefined
 
 aiDots :: Dots -> Coroutine a Dots
 aiDots initialDots

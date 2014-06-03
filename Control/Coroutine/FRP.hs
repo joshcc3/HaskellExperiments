@@ -1,6 +1,6 @@
-module FRP where
+module Control.Coroutine.FRP where
 
-import Coroutine
+import Control.Coroutine
 import Control.Arrow
 import Control.Monad
 import qualified Control.Category as C
