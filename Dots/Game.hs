@@ -33,17 +33,29 @@ data DotConfig = Dc { radius :: Int }
 type GameLogic = Coroutine Keyboard Rects
 
 num = 3
-rad = 10
+rad = 50
 config = map (, Dc rad) [1..num]
 delta = 1
-initialSit = [(1, Dot (20,20) (10,10)), (2, Dot (10,40) (5, 9)), (3, Dot (50, 50) (4 ,5))]
+
+initialSit = [(1, Dot (100,100) (20,50)), (2, Dot (600,500) (5, 9)), (3, Dot (500, 300) (4 ,5))]
+
+{-
+game :: GameLogic
+game = constC initialSit >>> c >>> (arr $ foldl (\a -> \b -> a ++ [mkRect b]) [])
+  where
+    incPos (i, Dot (x,y) v) = (i, Dot(x+1, y+1) v)
+    c = Coroutine (\ds -> (map incPos ds, constC (map incPos ds) >>> c))
+-}
+
 
 game :: GameLogic
 game 
   = aiDots initialSit >>> arr (\ds -> foldl (\a -> \b -> a ++ [mkRect b]) [] ds)
 
-mkRect (i,Dot (x,y) _) = ((x-i,y-i),(i,i))
 
+mkRect (i,Dot (x,y) _) = ((x-r,y-r),(r,r))
+  where
+    Just (Dc r) = lookup i config
 
 aiDots :: Dots -> Coroutine a Dots
 aiDots initialDots
