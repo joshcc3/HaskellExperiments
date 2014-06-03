@@ -42,7 +42,9 @@ game :: GameLogic
 game 
   = aiDots initialSit >>> arr (\ds -> foldl (\a -> \b -> a ++ [mkRect (snd b)]) [] ds)
 
-mkRect = undefined
+mkRect :: Dot -> Rect
+mkRect (i,Dot (x,y) _) = ((x-i,y-i),(i,i))
+
 
 aiDots :: Dots -> Coroutine a Dots
 aiDots initialDots
