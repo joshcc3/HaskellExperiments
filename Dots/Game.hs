@@ -19,30 +19,29 @@ We want to make a simple game where there are some dots (circles). Each of these
 The position of the dot is the integration of the speed vector. The speed vector is the integration of the acceleration vector. The acceleration vector for all except the users bot is constant except at collisions. And collisions depend on the units positions, thus we have an arrow loop.
 -}
 
-type Pos    = (Double, Double)
-type Radius = Double
+type Pos    = (Int, Int)
+type Radius = Int
 type DotPos = Pos
 type Vector a = (a, a)
-type Acceleration = Vector Double
-type Velocity = Vector Double
+type Acceleration = Vector Int
+type Velocity = Vector Int
 type Index = Int
 type Collision = (Index, Index)
-data Dot = Dot Pos (Vector Double)
+data Dot = Dot Pos Velocity
 type Dots = [(Index, Dot)]
-data DotConfig = Dc { radius :: Double }
+data DotConfig = Dc { radius :: Int }
 type GameLogic = Coroutine Keyboard Rects
 
 num = 3
 rad = 10
 config = map (, Dc rad) [1..num]
-delta = 0.1
+delta = 1
 initialSit = [(1, Dot (20,20) (10,10)), (2, Dot (10,40) (5, 9)), (3, Dot (50, 50) (4 ,5))]
 
 game :: GameLogic
 game 
-  = aiDots initialSit >>> arr (\ds -> foldl (\a -> \b -> a ++ [mkRect (snd b)]) [] ds)
+  = aiDots initialSit >>> arr (\ds -> foldl (\a -> \b -> a ++ [mkRect b]) [] ds)
 
-mkRect :: Dot -> Rect
 mkRect (i,Dot (x,y) _) = ((x-i,y-i),(i,i))
 
 
@@ -92,7 +91,7 @@ collisions = arr (\(i, ds) -> flip filter  (map (i,) [1..num]) (filterFunc ds))
        where
          collides :: (Dot, Dot) -> Bool
          collides ((Dot (x,y) _), (Dot (x',y') _))
-           = (dist (x'-x, y'-y) - rad - rad') < delta
+           = ((dist (x'-x, y'-y)) - rad - rad') < delta
          Just (Dc { radius = rad }) = lookup d config
          Just  (Dc { radius = rad' }) = lookup d' config
 
@@ -120,9 +119,9 @@ project (x,y) v = (x' * comp, y' * comp)
      (x', y') = unit v
      comp     = x*x' + y*y'
 
-unit (x,y) = (x / (dist (x, y) ), y/ (dist (x, y)) )
+unit (x,y) = (div x (dist (x, y) ), div y (dist (x, y)) )
 
-dist (a,b) = sqrt (a**2 + b**2)
+dist (a,b) =  ceiling $ sqrt $ fromIntegral (a^2 + b^2)
 
 
 
