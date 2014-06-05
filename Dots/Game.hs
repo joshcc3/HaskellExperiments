@@ -1,6 +1,6 @@
 {-# LANGUAGE Arrows, TupleSections, FlexibleInstances #-}
 
-module Dots.Game(GameLogic, game) where
+module Dots.Game where
 
 import Control.Arrow
 import Control.Coroutine
@@ -27,7 +27,7 @@ type Acceleration = Vector Int
 type Velocity = Vector Int
 type Index = Int
 type Collision = (Index, Index)
-data Dot = Dot Pos Velocity
+data Dot = Dot Pos Velocity deriving (Show)
 type Dots = [(Index, Dot)]
 data DotConfig = Dc { radius :: Int }
 type GameLogic = Coroutine Keyboard Rects
@@ -37,7 +37,7 @@ rad = 50
 config = map (, Dc rad) [1..num]
 delta = 1
 
-initialSit = [(1, Dot (100,100) (20,50)), (2, Dot (600,500) (5, 9)), (3, Dot (500, 300) (4 ,5))]
+initialSit = [(1, Dot (100,100) (2,3)), (2, Dot (600,500) (1, 4)), (3, Dot (500, 300) (3,1))]
 
 {-
 game :: GameLogic
@@ -79,8 +79,8 @@ dotPos ::
         ->  Pos 
         ->  Coroutine a (Pos, Velocity)
 dotPos accVecGen
-  = ((accVecGen >>>).). pos
-
+--  = ((accVecGen >>>).). pos
+    = ((constC (0,0) >>>).). pos
 
 pos ::    Velocity 
           ->  Pos 
@@ -148,3 +148,13 @@ allPairs [] = []
 allPairs (a:as) = map (a,) as ++ (allPairs as)
 
 vecIntegrate (x,y) = integrate x *** integrate y
+
+--------------------------------------------------------------------------------
+
+-- Test
+
+play n = iterate (snd . f) game !! n
+
+f = flip runC initKeyboard
+
+g = fst . f . play
