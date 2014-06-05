@@ -10,6 +10,7 @@ import Dots.Keyboard
 import Dots.Controls
 import Dots.Rect hiding (Pos)
 
+import Data.List
 
 {- 
 We want to make a simple game where there are some dots (circles). Each of these dots move in a fixed path. When the dots collide they bounce off according to the rules of physics. In addition the user manually controls one dot. Up scales the speed vector up, back scales the speed vector down until it reflects it across the axis. Left changes the speed vector by a constant angle in the anti clockwise direction. Right changes the speed vector by a constant angle in the clockwise direction. The bouncing of the dots is effected by the reflection of the speed vector against the tangent to the point of contact between the two dots. 
@@ -33,11 +34,11 @@ data DotConfig = Dc { radius :: Int }
 type GameLogic = Coroutine Keyboard Rects
 
 num = 3
-rad = 50
+rad = 20
 config = map (, Dc rad) [1..num]
-delta = 1
+delta = 2
 
-initialSit = [(1, Dot (100,100) (2,3)), (2, Dot (600,500) (1, 4)), (3, Dot (500, 300) (3,1))]
+initialSit = [(1, Dot (100,100) (0,6)), (2, Dot (100,160) (0, 3)), (3, Dot (500, 300) (3,1))]
 
 {-
 game :: GameLogic
@@ -53,9 +54,6 @@ game
   = aiDots initialSit >>> arr (\ds -> foldl (\a -> \b -> a ++ [mkRect b]) [] ds)
 
 
-mkRect (i,Dot (x,y) _) = ((x-r,y-r),(r,r))
-  where
-    Just (Dc r) = lookup i config
 
 aiDots :: Dots -> Coroutine a Dots
 aiDots initialDots
@@ -79,8 +77,8 @@ dotPos ::
         ->  Pos 
         ->  Coroutine a (Pos, Velocity)
 dotPos accVecGen
---  = ((accVecGen >>>).). pos
-    = ((constC (0,0) >>>).). pos
+  = ((accVecGen >>>).). pos
+--    = ((constC (0,0) >>>).). pos
 
 pos ::    Velocity 
           ->  Pos 
@@ -96,7 +94,7 @@ collisionList = collisions:collisionList
 
 -- two dots collide if distance between them is less than a delta
 collisions :: Coroutine (Index, Dots) (Event Collision)
-collisions = arr (\(i, ds) -> flip filter  (map (i,) [1..num]) (filterFunc ds))
+collisions = arr (\(i, ds) -> flip filter  [(i,x) | x <- [1..num], x /= i] (filterFunc ds))
   where
     filterFunc :: Dots -> (Int, Int) -> Bool
     filterFunc ds (d, d') = collides (al $ lookup d ds, al $ lookup d' ds)
@@ -123,7 +121,7 @@ collAccVecResolver :: (Pos, Velocity) -> (Pos, Velocity) -> Acceleration
 collAccVecResolver ((x,y), _) ((x',y'), v')
   = project v' normal
   where
-    normal = (y - y', x - x)
+    normal = (x' - x, y' - y)
 
 
 project (x,y) v = (x' * comp, y' * comp)
@@ -148,6 +146,11 @@ allPairs [] = []
 allPairs (a:as) = map (a,) as ++ (allPairs as)
 
 vecIntegrate (x,y) = integrate x *** integrate y
+
+mkRect (i,Dot (x,y) _) = ((x-r,y-r),(2*r,2*r))
+  where
+    Just (Dc r) = lookup i config
+
 
 --------------------------------------------------------------------------------
 
