@@ -6,6 +6,8 @@ import Control.Arrow
 import Control.Coroutine
 import Control.Coroutine.FRP
 
+import Data.Bifunctor (bimap)
+
 import Dots.Keyboard
 import Dots.Controls
 import Dots.Rect hiding (Pos)
@@ -32,6 +34,7 @@ data Dot = Dot Pos Velocity deriving (Show)
 type Dots = [(Index, Dot)]
 data DotConfig = Dc { radius :: Int }
 type GameLogic = Coroutine Keyboard Rects
+type Physics a = [Coroutine a Acceleration]
 
 num = 3
 rad = 20
@@ -70,6 +73,29 @@ aiDots initialDots
             >>> dotPos (arr collAccVecResolverC) initialVel initialPos 
             >>> arr (\(p,v) -> [(i, Dot p v)])
         Just (Dot initialPos initialVel) = lookup i initialDots
+
+dotPos' :: Velocity -> Pos -> Coroutine (Physics a, a) Dot
+dotPos' initialVel initialPos = g >>> f >>> pos initialVel initialPos >>> arr (uncurry Dot)
+  where
+    g :: Coroutine (Physics a, a) (Coroutine a Acceleration,a)
+    g = first $ arr $ looper (0,0) (+)
+    f :: Coroutine (Coroutine a Acceleration, a) Acceleration
+    f = arr (fst . uncurry runC)
+
+aiDots' :: Dots -> Coroutine (Physics Dots) Dots
+aiDots' initialDots
+  = loop $ g >>> withPrevious initialDots
+  where
+    g :: Coroutine (Physics Dots, Dots) Dots
+    g = looper [] (++) $ map h (zip [1..num] $ repeat dotPos')
+    h :: (Index, Velocity -> Pos -> Coroutine (Physics a, a) Dot) -> Coroutine (Physics a, a) Dots
+    h (i, func) = func initialVel initialPos >>> arr (\d -> [(i,d)])
+      where
+        Just (Dot initialPos initialVel) = lookup i initialDots
+
+
+{- we want to have something that takes the input, splits it across all the acceleration vector calculators, then folds their output into an acceleration vector, then calculates their position
+-}
 
 dotPos ::  
             Coroutine a Acceleration 
@@ -123,7 +149,6 @@ collAccVecResolver ((x,y), _) ((x',y'), v')
   where
     normal = (x' - x, y' - y)
 
-
 project (x,y) v = (x' * comp, y' * comp)
    where
      (x', y') = unit v
@@ -151,6 +176,12 @@ mkRect (i,Dot (x,y) _) = ((x-r,y-r),(2*r,2*r))
   where
     Just (Dc r) = lookup i config
 
+instance Num a => Num (a, a) where
+  (+) (a,a') (b, b') = (a+b, a'+b')
+  (*) (a, a') (b,b') = (a*b, a'*b')
+  abs v = undefined 
+  signum (a, a') = undefined
+  fromInteger i = undefined
 
 --------------------------------------------------------------------------------
 
@@ -161,3 +192,5 @@ play n = iterate (snd . f) game !! n
 f = flip runC initKeyboard
 
 g = fst . f . play
+
+
