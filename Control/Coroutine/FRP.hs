@@ -4,7 +4,7 @@ import Control.Coroutine
 import Control.Arrow
 import Control.Monad
 import qualified Control.Category as C
-
+import Data.Bifunctor (bimap)
 
 {- Co-routines are a type of stream processor. We get a stream of events and the co-routine processes the event with some function. We can think of a unit as an object that behaves like an arrow. The units position depends on keyboard events and the position of other co-routines it is co-operating with. the collisions depend on the units position. -}
 
@@ -79,4 +79,31 @@ restartWhen co = Coroutine (step co)
                    | otherwise = (b, Coroutine (step co))
       where
         (b, co') = runC co a
+
+
+joinC :: (b -> c -> d) -> Coroutine a b -> Coroutine a c -> Coroutine a d
+joinC f c c' = c &&& c' >>> arr (uncurry f)
+
+
+
+-- we want to create a coroutine that will accept streams of co-routines and an input that must be split across the co-routines and produce as a result the folding of the values for one time step. For the next time step it can choose to either progress with the current or get a switch to a new set of parallel computations.           
+-- what i want is something that will take join streams and when specified
+-- will
+-- its something that joins streams of coroutines
+
+{- 
+We want to create a co-routine that will either start a new series of parallel computations or continue them
+ (|||) :: a b d -> a c d -> a (Either b c) d
+-}
+
+
+looper :: b -> (b -> b -> b) -> [Coroutine a b] -> Coroutine a b
+looper b f cs = loop $ second (delay cs) >>> arr g
+  where
+--    g :: (a, [Coroutine a b]) -> (b, [Coroutine a b])
+    g (a, cs') = foldl func (b, []) cs'
+      where
+--        func :: (b, [Coroutine a b]) -> Coroutine a b -> (b, [Coroutine a b])
+        func (b',cs) c =  bimap (f b') (:cs) (runC c a)
+
 
