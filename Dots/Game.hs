@@ -1,4 +1,4 @@
-{-# LANGUAGE Arrows, TupleSections, FlexibleInstances #-}
+{-# LANGUAGE Arrows, TupleSections, FlexibleInstances, ScopedTypeVariables #-}
 
 module Dots.Game where
 
@@ -43,21 +43,20 @@ delta = 2
 
 initialSit = [(1, Dot (100,100) (0,6)), (2, Dot (100,160) (0, 3)), (3, Dot (500, 300) (3,1))]
 
-physics :: [(Index, Physics a)]
-physics = [] -- replicate num (1, [dotCollision])
+physics :: [(Index, Physics (Index, Dots))]
+physics = replicate num (1, [dotCollAdapter >>> dotCollision])
 
-{-
-game :: GameLogic
-game = constC initialSit >>> c >>> (arr $ foldl (\a -> \b -> a ++ [mkRect b]) [])
+  
+game' :: GameLogic
+game' = constC initialSit >>> c >>> (arr $ foldl (\a -> \b -> a ++ [mkRect b]) [])
   where
     incPos (i, Dot (x,y) v) = (i, Dot(x+1, y+1) v)
     c = Coroutine (\ds -> (map incPos ds, constC (map incPos ds) >>> c))
--}
+
 
 
 game :: GameLogic
-game 
-  =  undefined -- constC () >>> aiDots initialSit >>> arr (\ds -> foldl (\a -> \b -> a ++ [mkRect b]) [] ds)
+game =  undefined -- >>> aiDots physics initialSit >>> arr (\ds -> foldl (\a -> \b -> a ++ [mkRect b]) [] ds)
 
 
 dotPos :: Velocity -> Pos -> Coroutine (Physics a, a) Dot
@@ -69,26 +68,26 @@ dotPos initialVel initialPos
     f :: Coroutine (Coroutine a Acceleration, a) Acceleration
     f = arr (fst . uncurry runC)
 
-aiDots :: [(Index, Physics (a, Dots))] -> Dots -> Coroutine a Dots
+aiDots :: forall a. [(Index, Physics a)] -> Dots -> Coroutine a Dots
 aiDots physics initialDots
   = loop $ g >>> withPrevious initialDots
   where
---    g :: Coroutine a Dots
---looper :: Dots -> (Dots -> Dots -> Dots) -> [Coroutine a Dots] -> Coroutine a Dots
-    g = looper [] (++) $ map f physics
+    g :: Coroutine (a, Dots) Dots
+    g = arr fst >>> looper [] (++) (map f physics)
       where
---        f :: (Index, Physics a) -> Coroutine a Dots
+        f :: (Index, Physics a) -> Coroutine a Dots
         f (i, phys) 
           =     f' -- 
             >>> f'' --
             >>> f''' -- 
           where
             Just (Dot initialPos initialVel) = lookup i initialDots
---            f' :: Coroutine a (Index, (Physics a, a))
-            f' = constC i &&& arr (phys,) 
---            f'' :: Coroutine (Index, (Physics a, a)) (Index, Dot)
-            f'' =  second (dotPos initialVel initialPos) 
+            f' :: Coroutine a (Index, (Physics a, a))
+            f'' :: Coroutine (Index, (Physics a, a)) (Index, Dot)
             f''' :: Coroutine (Index, Dot) Dots
+
+            f' =  constC i &&& arr (phys,) 
+            f'' =  returnA *** dotPos initialVel initialPos
             f''' = arr toDots
 
 {- we want to have something that takes the input, splits it across all the acceleration vector calculators, then folds their output into an acceleration vector, then calculates their position
@@ -106,6 +105,9 @@ pos initialVel initialPos
 -- Physics
 
 collisionList = collisions:collisionList
+
+dotCollAdapter :: Coroutine a (Index, Dots)
+dotCollAdapter = undefined
 
 -- two dots collide if distance between them is less than a delta
 dotCollision :: Coroutine (Index, Dots) Acceleration
