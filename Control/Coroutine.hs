@@ -49,7 +49,6 @@ instance ArrowChoice Coroutine where
       
 
 
-
 {-
 
  mirror (Left x) = Right x

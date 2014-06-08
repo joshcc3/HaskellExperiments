@@ -32,20 +32,26 @@ type Index = Int
 type Collision = (Index, Index)
 data Dot = Dot Pos Velocity deriving (Show)
 type Dots = [(Index, Dot)]
-data DotConfig = Dc { radius :: Int }
+data DotConfig a = Dc { radius :: Int, initPos :: DotPos, initVel :: Velocity, physics :: Physics a }
 type GameLogic = Coroutine Keyboard Rects
 type Physics a = [Coroutine a Acceleration]
+data Setup a = Setup { dotConfs :: [(Index, DotConfig a)] }
 
+
+--------------------------------------------------------------------------------
+-- Game Initialization
 num = 3
 rad = 20
-config = map (, Dc rad) [1..num]
+config = map (, Dc {radius = rad}) [1..num]
 delta = 2
 
 initialSit = [(1, Dot (100,100) (0,6)), (2, Dot (100,160) (0, 3)), (3, Dot (500, 300) (3,1))]
 
-physics :: [(Index, Physics (Index, Dots))]
-physics = replicate num (1, [dotCollAdapter >>> dotCollision])
+simplePhysics :: [(Index, Physics a)]
+simplePhysics = replicate num (1, [dotCollAdapter >>> dotCollision])
 
+--------------------------------------------------------------------------------
+-- Game logic
   
 game' :: GameLogic
 game' = constC initialSit >>> c >>> (arr $ foldl (\a -> \b -> a ++ [mkRect b]) [])
@@ -56,39 +62,42 @@ game' = constC initialSit >>> c >>> (arr $ foldl (\a -> \b -> a ++ [mkRect b]) [
 
 
 game :: GameLogic
-game =  undefined -- >>> aiDots physics initialSit >>> arr (\ds -> foldl (\a -> \b -> a ++ [mkRect b]) [] ds)
+game = undefined -- aiDotPos simplePhysics initialSit >>> arr (\ds -> foldl (\a -> \b -> a ++ [mkRect b]) [] ds)
 
 
-dotPos :: Velocity -> Pos -> Coroutine (Physics a, a) Dot
+dotPos :: Velocity -> Pos -> Coroutine (Physics a, a) (DotPos, Velocity)
 dotPos initialVel initialPos 
-  = g >>> f >>> pos initialVel initialPos >>> arr (uncurry Dot)
+  = g >>> f >>> pos initialVel initialPos
   where
     g :: Coroutine (Physics a, a) (Coroutine a Acceleration,a)
-    g = first $ arr $ looper (0,0) (+)
+    g = first $ arr $ parallelize (0,0) (+)
     f :: Coroutine (Coroutine a Acceleration, a) Acceleration
     f = arr (fst . uncurry runC)
 
-aiDots :: forall a. [(Index, Physics a)] -> Dots -> Coroutine a Dots
-aiDots physics initialDots
-  = loop $ g >>> withPrevious initialDots
+aiDotPos :: forall a. [(Index, Physics a)] -> [(Index, (DotPos, Velocity))] -> Coroutine a [(Index, (DotPos, Velocity))]
+aiDotPos physics initialDotPos
+  = loop $ g >>> withPrevious initialDotPos
   where
-    g :: Coroutine (a, Dots) Dots
-    g = arr fst >>> looper [] (++) (map f physics)
-      where
-        f :: (Index, Physics a) -> Coroutine a Dots
-        f (i, phys) 
-          =     f' -- 
-            >>> f'' --
-            >>> f''' -- 
-          where
-            Just (Dot initialPos initialVel) = lookup i initialDots
-            f' :: Coroutine a (Index, (Physics a, a))
-            f'' :: Coroutine (Index, (Physics a, a)) (Index, Dot)
-            f''' :: Coroutine (Index, Dot) Dots
+    g :: Coroutine (a, [(Index, (DotPos, Velocity))]) [(Index, (DotPos, Velocity))]
+    g = arr fst >>> parallelize [] (++) (map (physicsToCoroutine initialDotPos) physics)
 
-            f' =  constC i &&& arr (phys,) 
-            f'' =  returnA *** dotPos initialVel initialPos
-            f''' = arr toDots
+-- interesting, this seems to act like a functor
+physicsToCoroutine :: forall a. [(Index, (DotPos, Velocity))] -> (Index, Physics a) -> Coroutine a [(Index, (DotPos, Velocity))]
+physicsToCoroutine initialDots (i, phys) 
+  =     f' -- 
+    >>> f'' --
+    >>> f''' -- 
+    where
+      f' :: Coroutine a (Index, (Physics a, a))
+      f'' :: Coroutine (Index, (Physics a, a)) (Index, (DotPos, Velocity))
+      f''' :: Coroutine (Index, (DotPos, Velocity)) [(Index, (DotPos, Velocity))]
+
+      f' =  constC i &&& arr (phys,) 
+      f'' =  returnA *** dotPos initialVel initialPos
+      f''' = arr toDots
+      Just (initialPos, initialVel) = (lookup i initialDots)
+
+
 
 {- we want to have something that takes the input, splits it across all the acceleration vector calculators, then folds their output into an acceleration vector, then calculates their position
 -}
@@ -158,7 +167,7 @@ dist (a,b) =  ceiling $ sqrt $ fromIntegral (a^2 + b^2)
 -- | Utilities
 
 
-toDots :: (Index, Dot) -> Dots
+toDots :: (Index, (DotPos, Velocity)) -> [(Index, (DotPos, Velocity))]
 toDots = (:[])
 
 al (Just x) = x
@@ -169,9 +178,11 @@ allPairs (a:as) = map (a,) as ++ (allPairs as)
 
 vecIntegrate (x,y) = integrate x *** integrate y
 
-mkRect (i,Dot (x,y) _) = ((x-r,y-r),(2*r,2*r))
+mkRect (i, a ) = ((x-r,y-r),(2*r,2*r))
   where
-    Just (Dc r) = lookup i config
+    r = dotRadius a
+    (x, y) = dotPosition a
+--  Just (Dc { radius = r }) = lookup i config
 
 instance Num a => Num (a, a) where
   (+) (a,a') (b, b') = (a+b, a'+b')
@@ -179,6 +190,45 @@ instance Num a => Num (a, a) where
   abs v = undefined 
   signum (a, a') = undefined
   fromInteger i = undefined
+
+
+{- 
+A functor maps objects in a category C to objects in a category D and morphisms in a category C to morphisms in a category D. 
+For functors F and G, A natural transformation n is a family of morphisms. These include morphisms that relate F(X) -> G(X), that is associate with X from the category C a morphism in category D. And for each morphism f: X -> Y, in C, F(f) o nY = nX o G(f)
+-}
+
+
+{- So what we want to do is create a reader functor. that is a functor that lifts morphisms in the base category to morphisms in the reader category. -}
+
+{-
+
+data StateFunctor s a b c = StateF { runState :: a (b,s) (c,s) }
+
+
+instance Arrow a => Functor (StateFunctor s a b) where 
+  fmap f = StateF $ arr f *** returnA
+
+
+instance Arrow a => Category (StateFunctor s a) where
+  
+  StateF s . State s' = 
+
+instance Arrow a => Arrow (StateFunctor s a) where
+  arr = fmap
+--  first :: StateFunctor s a b c -> StateFunctor s a (b,d) (c,d) 
+  first (StateF s) = StateF $ swap >>> s *** returnA >>> swap
+    where
+      swap = arr (\((a,b) ,c) -> ((a, c) ,b))
+-}
+
+dotRadius :: a -> Radius
+dotRadius = undefined 
+
+dotPosition :: a -> DotPos
+dotPosition = undefined
+
+dotVelocity :: a -> Velocity
+dotVelocity = undefined
 
 --------------------------------------------------------------------------------
 

@@ -97,8 +97,8 @@ We want to create a co-routine that will either start a new series of parallel c
 -}
 
 
-looper :: b -> (b -> b -> b) -> [Coroutine a b] -> Coroutine a b
-looper b f cs = loop $ second (delay cs) >>> arr g
+parallelize :: b -> (b -> b -> b) -> [Coroutine a b] -> Coroutine a b
+parallelize b f cs = loop $ second (delay cs) >>> arr g
   where
 --    g :: (a, [Coroutine a b]) -> (b, [Coroutine a b])
     g (a, cs') = foldl func (b, []) cs'
