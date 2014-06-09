@@ -34,9 +34,9 @@ data Dot = Dot Pos Velocity deriving (Show)
 type Dots = [(Index, Dot)]
 data DotConfig a = Dc { radius :: Int, initPos :: DotPos, initVel :: Velocity, physics :: Physics a }
 type GameLogic = Coroutine Keyboard Rects
-type Physics a = [Coroutine a Acceleration]
-data Setup a = Setup { dotConfs :: [(Index, DotConfig a)] }
-
+type Physics a = [Coroutine (a, State a) Acceleration]
+data State a = State { dotConfs :: [(Index, DotConfig a)] }
+type Map a b = [(a, b)]
 
 --------------------------------------------------------------------------------
 -- Game Initialization
@@ -47,7 +47,7 @@ delta = 2
 
 initialSit = [(1, Dot (100,100) (0,6)), (2, Dot (100,160) (0, 3)), (3, Dot (500, 300) (3,1))]
 
-simplePhysics :: [(Index, Physics a)]
+simplePhysics :: Map Index (Physics a) 
 simplePhysics = replicate num (1, [dotCollAdapter >>> dotCollision])
 
 --------------------------------------------------------------------------------
@@ -65,32 +65,32 @@ game :: GameLogic
 game = undefined -- aiDotPos simplePhysics initialSit >>> arr (\ds -> foldl (\a -> \b -> a ++ [mkRect b]) [] ds)
 
 
-dotPos :: Velocity -> Pos -> Coroutine (Physics a, a) (DotPos, Velocity)
+dotPos :: Velocity -> Pos -> Coroutine (Physics a, (a, State a)) (DotPos, Velocity)
 dotPos initialVel initialPos 
   = g >>> f >>> pos initialVel initialPos
   where
-    g :: Coroutine (Physics a, a) (Coroutine a Acceleration,a)
+    g :: Coroutine (Physics a, (a, State a)) (Coroutine (a, State a) Acceleration,(a, State a))
     g = first $ arr $ parallelize (0,0) (+)
     f :: Coroutine (Coroutine a Acceleration, a) Acceleration
     f = arr (fst . uncurry runC)
 
-aiDotPos :: forall a. [(Index, Physics a)] -> [(Index, (DotPos, Velocity))] -> Coroutine a [(Index, (DotPos, Velocity))]
-aiDotPos physics initialDotPos
-  = loop $ g >>> withPrevious initialDotPos
+aiDotPos :: forall a. Map Index (Physics a) -> Map Index (DotPos, Velocity) -> Coroutine (a, State a) (Map Index (DotPos, Velocity))
+aiDotPos physics initialDotPos 
+  = g
   where
-    g :: Coroutine (a, [(Index, (DotPos, Velocity))]) [(Index, (DotPos, Velocity))]
-    g = arr fst >>> parallelize [] (++) (map (physicsToCoroutine initialDotPos) physics)
+    g :: Coroutine (a, State a) (Map Index (DotPos, Velocity))
+    g =  parallelize [] (++) (map (physicsToCoroutine initialDotPos) physics)
 
 -- interesting, this seems to act like a functor
-physicsToCoroutine :: forall a. [(Index, (DotPos, Velocity))] -> (Index, Physics a) -> Coroutine a [(Index, (DotPos, Velocity))]
+physicsToCoroutine :: forall a. Map Index (DotPos, Velocity) -> (Index, Physics a) -> Coroutine (a, State a) (Map Index (DotPos, Velocity))
 physicsToCoroutine initialDots (i, phys) 
   =     f' -- 
     >>> f'' --
     >>> f''' -- 
     where
-      f' :: Coroutine a (Index, (Physics a, a))
-      f'' :: Coroutine (Index, (Physics a, a)) (Index, (DotPos, Velocity))
-      f''' :: Coroutine (Index, (DotPos, Velocity)) [(Index, (DotPos, Velocity))]
+      f' :: Coroutine (a, State a) (Index, (Physics a, (a, State a)))
+      f'' :: Coroutine (Index, (Physics a, (a, State a))) (Index, (DotPos, Velocity))
+      f''' :: Coroutine (Index, (DotPos, Velocity)) (Map Index (DotPos, Velocity))
 
       f' =  constC i &&& arr (phys,) 
       f'' =  returnA *** dotPos initialVel initialPos
@@ -115,35 +115,35 @@ pos initialVel initialPos
 
 collisionList = collisions:collisionList
 
-dotCollAdapter :: Coroutine a (Index, Dots)
+dotCollAdapter :: Coroutine a (Index, Map Index (DotPos, Velocity))
 dotCollAdapter = undefined
 
 -- two dots collide if distance between them is less than a delta
-dotCollision :: Coroutine (Index, Dots) Acceleration
+dotCollision :: Coroutine (Index, Map Index (DotPos, Velocity)) Acceleration
 dotCollision = collisions &&& returnA >>> arr collAccVecResolver
 
-collisions :: Coroutine (Index, Dots) (Event Collision)
+collisions :: Coroutine (Index, Map Index (DotPos, Velocity)) (Event Collision)
 collisions = arr (\(i, ds) -> flip filter  [(i,x) | x <- [1..num], x /= i] (filterFunc ds))
   where
-    filterFunc :: Dots -> (Int, Int) -> Bool
+    filterFunc :: Map Index (DotPos, Velocity) -> (Int, Int) -> Bool
     filterFunc ds (d, d') = collides (al $ lookup d ds, al $ lookup d' ds)
        where
-         collides :: (Dot, Dot) -> Bool
-         collides ((Dot (x,y) _), (Dot (x',y') _))
+         collides :: ((DotPos, Velocity), (DotPos, Velocity)) -> Bool
+         collides (((x,y), _), ((x',y'), _))
            = ((dist (x'-x, y'-y)) - rad - rad') < delta
          Just (Dc { radius = rad }) = lookup d config
          Just  (Dc { radius = rad' }) = lookup d' config
 
 -- should use looper here
-collAccVecResolver :: (Event Collision, (Index, Dots)) -> Acceleration
+collAccVecResolver :: (Event Collision, (Index, Map Index (DotPos, Velocity))) -> Acceleration
 collAccVecResolver ([],_)  = (0,0)
 collAccVecResolver ((i,i'):cs, (index,ds)) = (xAcc'', yAcc'')
   where
     (xAcc'', yAcc'') = (xAcc + xAcc', yAcc + yAcc')
     (xAcc, yAcc)    = collAccVecResolver' (pos, vel) (pos', vel')
     (xAcc', yAcc')   = collAccVecResolver (cs, (index,ds))
-    Just (Dot pos vel) = lookup i ds
-    Just (Dot pos' vel') = lookup i' ds
+    Just (pos, vel) = lookup i ds
+    Just (pos', vel') = lookup i' ds
 
 
 collAccVecResolver' :: (Pos, Velocity) -> (Pos, Velocity) -> Acceleration
@@ -167,7 +167,7 @@ dist (a,b) =  ceiling $ sqrt $ fromIntegral (a^2 + b^2)
 -- | Utilities
 
 
-toDots :: (Index, (DotPos, Velocity)) -> [(Index, (DotPos, Velocity))]
+toDots :: (Index, (DotPos, Velocity)) -> Map Index (DotPos, Velocity)
 toDots = (:[])
 
 al (Just x) = x
