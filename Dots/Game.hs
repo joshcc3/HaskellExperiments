@@ -30,39 +30,45 @@ type Acceleration = Vector Int
 type Velocity = Vector Int
 type Index = Int
 type Collision = (Index, Index)
-data Dot = Dot Pos Velocity deriving (Show)
-type Dots = [(Index, Dot)]
-data DotConfig a = Dc { radius :: Int, initPos :: DotPos, initVel :: Velocity, physics :: Physics a }
+data Dot a = Dot { radius :: Int, position :: DotPos, velocity :: Velocity, physics :: Physics a }
 type GameLogic = Coroutine Keyboard Rects
 type Physics a = [Coroutine (a, State a) Acceleration]
-data State a = State { dotConfs :: [(Index, DotConfig a)] }
+data State a = State { dots :: Map Index (Dot a) }
 type Map a b = [(a, b)]
 
 --------------------------------------------------------------------------------
 -- Game Initialization
 num = 3
 rad = 20
-config = map (, Dc {radius = rad}) [1..num]
+config = map (, Dot {radius = rad}) [1..num]
 delta = 2
 
-initialSit = [(1, Dot (100,100) (0,6)), (2, Dot (100,160) (0, 3)), (3, Dot (500, 300) (3,1))]
+initialState :: State a
+initialState = State [(1, Dot {radius = rad, position = (10,10), velocity = (10,10), physics = simplePhysics} )]
 
-simplePhysics :: Map Index (Physics a) 
-simplePhysics = replicate num (1, [dotCollAdapter >>> dotCollision])
+simplePhysics :: Physics a
+simplePhysics = [dotCollAdapter >>> dotCollision]
 
 --------------------------------------------------------------------------------
 -- Game logic
   
-game' :: GameLogic
-game' = constC initialSit >>> c >>> (arr $ foldl (\a -> \b -> a ++ [mkRect b]) [])
-  where
-    incPos (i, Dot (x,y) v) = (i, Dot(x+1, y+1) v)
-    c = Coroutine (\ds -> (map incPos ds, constC (map incPos ds) >>> c))
 
 
-
+{- what we are trying to do over here is to parallelize the computation of each component of the state. thus we have a list of coroutines that we must fold together. However since lists are monomorphic-}
 game :: GameLogic
-game = undefined -- aiDotPos simplePhysics initialSit >>> arr (\ds -> foldl (\a -> \b -> a ++ [mkRect b]) [] ds)
+game = loop $ g >>> h
+  where
+    g :: Coroutine (a, State a) (State a)
+    g = parallelize emptyState f co
+    h :: Coroutine (State a) (Rects, State a)
+    h = parallelize [] (++) undefined &&& delay initialState
+    emptyState :: State a
+    emptyState = undefined
+    f :: State a -> State a -> State a
+    f = undefined
+    co :: [Coroutine (a, State a) (State a)]
+    co = undefined
+-- aiDotPos simplePhysics initialSit >>> arr (\ds -> foldl (\a -> \b -> a ++ [mkRect b]) [] ds)
 
 
 dotPos :: Velocity -> Pos -> Coroutine (Physics a, (a, State a)) (DotPos, Velocity)
@@ -76,10 +82,8 @@ dotPos initialVel initialPos
 
 aiDotPos :: forall a. Map Index (Physics a) -> Map Index (DotPos, Velocity) -> Coroutine (a, State a) (Map Index (DotPos, Velocity))
 aiDotPos physics initialDotPos 
-  = g
-  where
-    g :: Coroutine (a, State a) (Map Index (DotPos, Velocity))
-    g =  parallelize [] (++) (map (physicsToCoroutine initialDotPos) physics)
+  = parallelize [] (++) (map (physicsToCoroutine initialDotPos) physics)
+
 
 -- interesting, this seems to act like a functor
 physicsToCoroutine :: forall a. Map Index (DotPos, Velocity) -> (Index, Physics a) -> Coroutine (a, State a) (Map Index (DotPos, Velocity))
@@ -131,8 +135,8 @@ collisions = arr (\(i, ds) -> flip filter  [(i,x) | x <- [1..num], x /= i] (filt
          collides :: ((DotPos, Velocity), (DotPos, Velocity)) -> Bool
          collides (((x,y), _), ((x',y'), _))
            = ((dist (x'-x, y'-y)) - rad - rad') < delta
-         Just (Dc { radius = rad }) = lookup d config
-         Just  (Dc { radius = rad' }) = lookup d' config
+         Just (Dot { radius = rad }) = lookup d config
+         Just  (Dot { radius = rad' }) = lookup d' config
 
 -- should use looper here
 collAccVecResolver :: (Event Collision, (Index, Map Index (DotPos, Velocity))) -> Acceleration
@@ -178,11 +182,8 @@ allPairs (a:as) = map (a,) as ++ (allPairs as)
 
 vecIntegrate (x,y) = integrate x *** integrate y
 
-mkRect (i, a ) = ((x-r,y-r),(2*r,2*r))
-  where
-    r = dotRadius a
-    (x, y) = dotPosition a
---  Just (Dc { radius = r }) = lookup i config
+mkRect Dot{radius = r, position = (x, y)}  = ((x-r,y-r),(2*r,2*r))
+
 
 instance Num a => Num (a, a) where
   (+) (a,a') (b, b') = (a+b, a'+b')
@@ -241,3 +242,10 @@ f = flip runC initKeyboard
 g = fst . f . play
 
 
+{-
+game' :: GameLogic
+game' =  constC initialSit >>> c >>> (arr $ foldl (\a -> \b -> a ++ [mkRect b]) [])
+  where
+    incPos (i, Dot (x,y) v) = (i, Dot(x+1, y+1) v)
+    c = Coroutine (\ds -> (map incPos ds, constC (map incPos ds) >>> c))
+-}
