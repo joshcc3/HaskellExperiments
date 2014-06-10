@@ -289,3 +289,25 @@ Ao for example. We have one bot that moves back and forth. We have another bot t
 The first bot will have a straight forward syntax tree. The second bots syntax tree uptil the point where it moves to the predefined location is fine. After that point it will have a hole. The way we want to model the interaction is by elements reacting to each other. We do this via the observer pattern, or the hole has a function. When we combine strategies the function takes the AST as an argument in the hole and modifies the AST to suit the pattern.
 
 >
+
+
+<LINK 
+In order to create co-operative play we must provide an interface for co-opertaion. We must first define what we mean by co-operation. Definitions arise from the concatenation of examples using the All monoid. Co-operation is actually a subset of the over-arching theme of interaction. So we must try and implement interaction between dots. What does it mean for dots to interact. Again we define this by consolidating examples. Examples of interaction are, one dot responds to another dots movements (that is its acceleration is a function of the other dots state (position, velocity, size (possibly acceleration)). A dot wants to protect another dot. That is if dot 'x' is protecting dot 'y' and another dot 'z' threatens dot 'y' then, dot 'x' protects 'y' against 'z', otherwise it just follows 'x'. 
+thus protection is defined in the following manner
+protect y x = if threaten z x then protectAgainst y x z
+                              else follow y x
+follow y x = acceleration increases velocity component of y in direction of x
+In order to define protection against  we must know how a dot is being threatened. And we must know how to eliminate a threat.
+In order to perform the above two we must first define a threat. using the above methodology we proceed by using examples. An example threat is where another dot attempts to collide with our dot. This is only a threat because collisions imply death. And death is only bad because the goal is to stay alive forever. Thus we can represent threats as possibilities of preventing goals.
+Prevention of goals must be defined in terms of the goal. We will defer a formal description of goals. Subsequently we must defined how to protect against threats. Protecting against threats is simply preventing the prevention of goals. Which will also be discussed later.
+
+Definition of a goal: We will define a goal inductively. The base case for a goal will be - (a dot) must stay alive forever.
+Prevention of goal is defined as anything that kills a dot.
+Killing of a dot can be described directly in terms of the game components and does not require more concepts. Examples include collisions, being shot etc.
+A dot wants to prevent the protection of another dot, a dot wants to protect the prevention of protection of another dot and so on defined recursively on goals.
+
+Thus the only primitive we need basically is reaction to anothers events. The next ones are follow, threaten, prevent threat which can be defined as shown above. 
+
+The next step after this point is involving within an interaction multiple dots to achieve a goal (or prevent it).
+
+>
