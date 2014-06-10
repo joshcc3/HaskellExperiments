@@ -49,3 +49,5 @@ project (x,y) v = (x' * comp, y' * comp)
 unit (x,y) = (div x (dist (x, y) ), div y (dist (x, y)) )
 
 dist (a,b) =  ceiling $ sqrt $ fromIntegral (a^2 + b^2)
+
+
