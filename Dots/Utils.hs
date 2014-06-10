@@ -28,7 +28,40 @@ instance Num a => Num (a, a) where
   signum (a, a') = undefined
   fromInteger i = undefined
 
+dotRadius :: a -> Radius
+dotRadius = undefined 
+
+dotPosition :: a -> DotPos
+dotPosition = undefined
+
+dotVelocity :: a -> Velocity
+dotVelocity = undefined
+
+Builder a = Property a -> 
 {-
+we wnat to build our object incrementally by concatenating properties. We want to build the properties by concatenating the values of the properties. The values of the properties simply exist. 
+
+Our builder will represent the object as a map from enumerable properties to values.
+
+concatentation of two builders is simply the concatenation through zipping of the values of properties.
+
+For Dot - 
+Examples of values of properties:
+Property: radius, value: 1
+
+concatenating values:
+given (d,property) (d', property')
+
+Enumerate the properties.
+
+
+we can build our object from a map. We first enumerate the properties. Build the enumerated version of the object.
+
+concatFeature :: Last a => () -> Dot a -> Dot a -> Dot a
+concatFeature f d d' = Dot (f d' <> f d)
+
+setRadius (Dot a b c d e _) r = Dot a b c d e r
+
 So what is a builder. a builder takes some property of the object it is building and appends that property to the object. Function from property, to an incomplete object. An incomplete object is a sequence of build instructions.
 Builder a :: Property a -> a
 Property a = 
@@ -42,6 +75,9 @@ data State a = State { dots :: Map Index (Dot a) }
 {-
 Think about implementing a builder as a monoid. 
 -}
+
+
+
 
 {- 
 A functor maps objects in a category C to objects in a category D and morphisms in a category C to morphisms in a category D. 
@@ -71,12 +107,3 @@ instance Arrow a => Arrow (StateFunctor s a) where
     where
       swap = arr (\((a,b) ,c) -> ((a, c) ,b))
 -}
-
-dotRadius :: a -> Radius
-dotRadius = undefined 
-
-dotPosition :: a -> DotPos
-dotPosition = undefined
-
-dotVelocity :: a -> Velocity
-dotVelocity = undefined
