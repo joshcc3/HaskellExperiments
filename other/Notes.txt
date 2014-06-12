@@ -4,7 +4,7 @@
    return a >>= k  =  k a
    m >>= return    =  m
    m >>= (\x -> k x >>= h)  =  (m >>= k) >>= h
- 
+
    fmap f xs  =  xs >>= return . f  =  liftM f xs
 >
 
@@ -171,7 +171,7 @@ instance Monad (RComp r) where
 
 <LINK 12
 
-Type Algebra: 
+Type Algebra:
  Either a b  has the same properties as  a + b, that is it is commutative, associative, (^) distributes over it replacing plus with multiply, multiplication distributes over it.
 
 (a, b)  has the same properties as  a*b
@@ -187,10 +187,10 @@ The Either operator takes two types and gives either one of them. We say that it
 
 Similarly for the other two operators their properties line up with the others. So an algebra is simply a set with some operators defined on the elements. (notice the boolean 'and' and 'or' are also algaebraic operators. They dont seem to behave exactly like the (+) and (*) operators though)
 
-The semantics of how Either, (,) and (^) emerge when we observe them in action. Either is simply a type that will give one of its types no matter how many nested eithers. This makes it commutative and associative. 
+The semantics of how Either, (,) and (^) emerge when we observe them in action. Either is simply a type that will give one of its types no matter how many nested eithers. This makes it commutative and associative.
 (,)  is a type that means you take both of the types presented.
 (^) means give the exponent you have the base.
-interestin behaviour arises when you combine the two, or when function definitions can be expressed in terms of the other operators. 
+interestin behaviour arises when you combine the two, or when function definitions can be expressed in terms of the other operators.
 (a -> r) -> (b -> r) -> r, is equivalent to (a -> r, b -> r) -> r, HUH?
 Think about it, how would you read the function, given an (a -> r) and a (b -> r) i get an r.
 
@@ -200,11 +200,11 @@ Think about it, how would you read the function, given an (a -> r) and a (b -> r
 <LINK 13
   The continuation passing style takes the function to be evaluated next as its argument. It passes the result to the next function It also allows for non local transfers and early exit of a method. In fact it allows you to suspend functions somehow. Should check this out. Lazy evaluation is mainly supported by  the continuation monad.
 FOllowing the continuation passing style, a continuation simply holds the future of the function. When we say future of a function we mean that a function has finished the computation it wishes to perform produces an intermediate value 'a', it takes as an argument the function to be evaluated next and gives the function its intermediate value. This is very similiar to what we have been doing all this time with the chaining computations. We have a computation and we fix the next computation by chaining it together with the result of the previous computation. Thus fixing the next function to be used in the computation that uses the result of the previous computation.
-The continuation monad holds within it the future of a function. That is it holds within it a suspended computation. Giving this suspended computation a future - in the form of a function that takes the value computed so far and returns a result. In order to terminate such a chain we can simply use 'id' as the last function. 
+The continuation monad holds within it the future of a function. That is it holds within it a suspended computation. Giving this suspended computation a future - in the form of a function that takes the value computed so far and returns a result. In order to terminate such a chain we can simply use 'id' as the last function.
 >
 
 <LINK 14
-  Interesting idea would be to stop using specific monads and try and come up wiht computations that simply need the general properties of monads i.e. computations that can be chained. And where the chaining must be associative. Equally interesting are the idea of Monoids. Monoids are monads that consist of a type, an identity or zero element and a binary operator. They must obey the laws of the identity element. Also the binary operator should be associative. 
+  Interesting idea would be to stop using specific monads and try and come up wiht computations that simply need the general properties of monads i.e. computations that can be chained. And where the chaining must be associative. Equally interesting are the idea of Monoids. Monoids are monads that consist of a type, an identity or zero element and a binary operator. They must obey the laws of the identity element. Also the binary operator should be associative.
 >
 
 < LINK 15
@@ -235,7 +235,7 @@ a
 >
 
 <
-  For the game, the type of architecture we want is that each client has a dedicated 2-way channel with the server and there is also a broadcast channel which the server and the clients share. 
+  For the game, the type of architecture we want is that each client has a dedicated 2-way channel with the server and there is also a broadcast channel which the server and the clients share.
 
  The game itself - units that co-operate against some obstacles to achieve a goal. We want a minimum possible, definition of a unit.
 >
@@ -285,14 +285,14 @@ What does composing these strategies mean.
   A strategy is combinable if it has a hole in it. What we are trying to do is combine AST's. We want to combine strategies, a hole is just a place holder for an AST.
 A hole is actually a continuation. when we compose holes they should create a single AST. The holes should be filled in.
 
-Ao for example. We have one bot that moves back and forth. We have another bot that moves to some predefined location and then follows a bot. 
+Ao for example. We have one bot that moves back and forth. We have another bot that moves to some predefined location and then follows a bot.
 The first bot will have a straight forward syntax tree. The second bots syntax tree uptil the point where it moves to the predefined location is fine. After that point it will have a hole. The way we want to model the interaction is by elements reacting to each other. We do this via the observer pattern, or the hole has a function. When we combine strategies the function takes the AST as an argument in the hole and modifies the AST to suit the pattern.
 
 >
 
 
-<LINK 
-In order to create co-operative play we must provide an interface for co-opertaion. We must first define what we mean by co-operation. Definitions arise from the concatenation of examples. Co-operation is actually a subset of the over-arching theme of interaction. So we must try and implement interaction between dots. What does it mean for dots to interact. Again we define this by consolidating examples. Examples of interaction are, one dot responds to another dots movements (that is its acceleration is a function of the other dots state (position, velocity, size (possibly acceleration)). A dot wants to protect another dot. That is if dot 'x' is protecting dot 'y' and another dot 'z' threatens dot 'y' then, dot 'x' protects 'y' against 'z', otherwise it just follows 'x'. 
+<LINK
+In order to create co-operative play we must provide an interface for co-opertaion. We must first define what we mean by co-operation. Definitions arise from the concatenation of examples. Co-operation is actually a subset of the over-arching theme of interaction. So we must try and implement interaction between dots. What does it mean for dots to interact. Again we define this by consolidating examples. Examples of interaction are, one dot responds to another dots movements (that is its acceleration is a function of the other dots state (position, velocity, size (possibly acceleration)). A dot wants to protect another dot. That is if dot 'x' is protecting dot 'y' and another dot 'z' threatens dot 'y' then, dot 'x' protects 'y' against 'z', otherwise it just follows 'x'.
 thus protection is defined in the following manner
 protect y x = if threaten z x then protectAgainst y x z
                               else follow y x
@@ -301,22 +301,22 @@ In order to define protection against we must know how a dot is being threatened
 In order to perform the above two we must first define a threat. using the above methodology we proceed by using examples. An example threat is where another dot attempts to collide with our dot. This is only a threat because collisions imply death. And death is only bad because the goal is to stay alive forever. Thus we can represent threats as possibilities of preventing goals.
 Prevention of goals must be defined in terms of the goal. We will defer a formal description of goals. Subsequently we must define how to protect against threats. Protecting against threats is simply preventing the prevention of goals. Which will also be discussed later.
 
-Definition of a goal: We will define a goal inductively. The goal will hold as its base case a function from (the state, a) -> Acceleration and a Goal Situation. Prevent a goal is to prevent the final state from occuring. 
+Definition of a goal: We will define a goal inductively. The goal will hold as its base case a function from (the state, a) -> Acceleration and a Goal Situation. Prevent a goal is to prevent the final state from occuring.
 Goal a = Base ((State, a) -> Acceleration) | Threaten (Goal a) | Protect (Goal a).
-In order to describe the abstract  concept of such goals we must realize them in the context of our game that is instantiate a goal using elements from a game. 
+In order to describe the abstract  concept of such goals we must realize them in the context of our game that is instantiate a goal using elements from a game.
 
 So lets have one last attempt at defining an category for our game.
-We want to have the concept of our dot, we want to have the notion of dying of a dot. We want to have the notion of interation of two dots. 
+We want to have the concept of our dot, we want to have the notion of dying of a dot. We want to have the notion of interation of two dots.
 The dot is a stream processor, taking the game state and producing a new game state. So the objects in our category are game states. Morphisms in our category are dots. Composition of dots is normal composition of stream processors.
 
-Now lets create a category of goals. Morphisms going from one goal to the next are Threatening of goals, Protecting of goals. Composing these morphisms together we have chains of goals. g threaten g' composed with g' protect g'' is a goal that protects the threatening of g. 
+Now lets create a category of goals. Morphisms going from one goal to the next are Threatening of goals, Protecting of goals. Composing these morphisms together we have chains of goals. g threaten g' composed with g' protect g'' is a goal that protects the threatening of g.
 
 
 Now lets create a category consisting of goals as well as the the objects of all possible product categories of the category of dots. Now morphisms go from goals to dots and from dots to goals. (maybe these form a group, look into this later). Defer the definition of the natural transformations. So now composition takes the form.
 
 d -> g o g -> g'  =  d -> g'
 g -> d o d -> g   =  g -> g
-g -> g' o g' -> d =  g -> d
+g -> g' o g' -> d =  g -> D's
 
 
 
@@ -330,11 +330,11 @@ For example:
 The base case for a goal could be - accelerate in the direction of a particular unit (Significance of the goal - attack another dot)
 Threaten (Goal a) - Prevent goal from happening.
 Prevention of goal is defined as anything that kills a dot.
-Threaten x can be decribed as for all x. x -> 
+Threaten x can be decribed as for all x. x ->
 Killing of a dot can be described directly in terms of the game components and does not require more concepts. Examples include collisions, being shot etc.
 A dot wants to prevent the protection of another dot, a dot wants to protect the prevention of protection of another dot and so on defined recursively on goals.
 
-Thus the only primitive we need basically is reaction to anothers events. The next ones are follow, threaten, prevent threat which can be defined as shown above. 
+Thus the only primitive we need basically is reaction to anothers events. The next ones are follow, threaten, prevent threat which can be defined as shown above.
 
 The next step after this point is involving within an interaction multiple dots to achieve a goal (or prevent it).
 
