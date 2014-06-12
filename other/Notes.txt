@@ -307,22 +307,26 @@ In order to describe the abstract  concept of such goals we must realize them in
 
 So lets have one last attempt at defining an category for our game.
 We want to have the concept of our dot, we want to have the notion of dying of a dot. We want to have the notion of interation of two dots. 
-The dot is a stream processor, taking the game state and producing a new game state. So the objects in our category are game states. Morphisms in our category are dots. Composition of dots is normal composition of stream processors.
+The dot is a stream processor, taking the game state and producing a new game state. So the objects in our category are game states. Morrphisms are dots. Composition of dots is normal composition of stream processors. Identity element is the identity co-routine.
 
-Now lets create a category of goals. Morphisms going from one goal to the next are Threatening of goals, Protecting of goals. Composing these morphisms together we have chains of goals. g threaten g' composed with g' protect g'' is a goal that protects the threatening of g. 
+Now lets create a category of goals. Morphisms going from one goal to the next are Threatening of goals, Protecting of goals. Composing these morphisms together we have chains of goals. g threaten g' composed with g' protect g'' is a goal that protects the threatening of g. The identity morphism is simply leaves goals unchanged.
+
+We create a category of dots. We will define the morphisms through a functor from goal to dots. 
+
+We want to model dot interaction in terms of goals. Thus dots and goals must form an isomorphism. An isomorhpism is a bijection between the two categories on their sets of objects and morphisms.
+
+A functor maps all objects in the source category to objects in the target category. A functor maps all morphisms in the source category to morphisms in the target category.
+
+Thus our functor F, 
+Goals are mapped to dots in a strict bijective relationship.
 
 
-Now lets create a category consisting of goals as well as the the objects of all possible product categories of the category of dots. Now morphisms go from goals to dots and from dots to goals. (maybe these form a group, look into this later). Defer the definition of the natural transformations. So now composition takes the form.
+
+
 
 d -> g o g -> g'  =  d -> g'
 g -> d o d -> g   =  g -> g
 g -> g' o g' -> d =  g -> d
-
-
-
-
-
-
 
 
 
