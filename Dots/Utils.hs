@@ -37,8 +37,26 @@ dotPosition = undefined
 dotVelocity :: a -> Velocity
 dotVelocity = undefined
 
+instance Monoid (State a) where
+  mempty = undefined
+  mappend = undefined
+
+instance Monoid b => Monoid (Map a b) where
+  mempty  = []
+  mappend [] m = m
+  mappend m [] = m
+  mappend ((a, b):m) m' 
+    = case b' of
+        Nothing  -> b
+        (Just x) -> mappend b x
+    where
+      b' = lookup a m'
+                 
+
+
+
 {-
-we wnat to build our object incrementally by concatenating properties. We want to build the properties by concatenating the values of the properties. The values of the properties simply exist. 
+we want to build our object incrementally by concatenating properties. We want to build the properties by concatenating the values of the properties. The values of the properties simply exist. 
 
 Our builder will represent the object as a map from enumerable properties to values.
 

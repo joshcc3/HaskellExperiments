@@ -53,7 +53,7 @@ game = loop $ g >>> h
     g :: Coroutine (a, State a) (State a)
     g = parallelize emptyState f co
     h :: Coroutine (State a) (Rects, State a)
-    h = parallelize [] (++) comps &&& delay initialState
+    h = parallelize comps &&& delay initialState
     emptyState :: State a
     emptyState = undefined
     f :: State a -> State a -> State a
