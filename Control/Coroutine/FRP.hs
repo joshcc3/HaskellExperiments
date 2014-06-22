@@ -7,6 +7,8 @@ import Control.Arrow
 import Control.Monad
 import qualified Control.Category as C
 import Data.Bifunctor (bimap)
+import Data.Monoid
+
 
 {- Co-routines are a type of stream processor. We get a stream of events and the co-routine processes the event with some function. We can think of a unit as an object that behaves like an arrow. The units position depends on keyboard events and the position of other co-routines it is co-operating with. the collisions depend on the units position. -}
 
@@ -68,7 +70,7 @@ derivate = withPrevious 0 >>> zipWithC (-)
 -- | Trigger an event whenever the value satisfies the given predicate function
 watch :: (a -> Bool) -> Coroutine a (Event a)
 watch f = Coroutine $ \i ->
-    if f i
+    if f i                                 
         then ([i], watch f)
         else ([], watch f)
 
@@ -99,13 +101,9 @@ We want to create a co-routine that will either start a new series of parallel c
 -}
 
 
-parallelize :: forall a b. b -> (b -> b -> b) -> [Coroutine a b] -> Coroutine a b
-parallelize b f cs = loop $ second (delay cs) >>> arr g
-  where
-    g :: (a, [Coroutine a b]) -> (b, [Coroutine a b])
-    g (a, cs') = foldl func (b, []) cs'
-      where
-        func :: (b, [Coroutine a b]) -> Coroutine a b-> (b, [Coroutine a b])
-        func (b',cs) c = undefined -- bimap (f b') (:cs) (runC c a)
+parallelize :: Monoid b => [Coroutine a b] -> Coroutine a b
+parallelize = mconcat 
 
-
+instance Monoid b => Monoid (Coroutine a b) where
+  mempty = constC mempty
+  mappend c c' = c &&& c' >>> arr (uncurry mappend)

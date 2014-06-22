@@ -340,4 +340,40 @@ Thus the only primitive we need basically is reaction to anothers events. The ne
 
 The next step after this point is involving within an interaction multiple dots to achieve a goal (or prevent it).
 
+The goal category that we created seems more like a monoidal category, we just keep wrapping layers on top of the layer. The layers keep adding some semantic meaning. Thus the goal category comes from the monoidal category. The morphisms in the goal category  s==
+
+>
+
+<
+
+A monad is composed of three things:
+An endofunctor T
+a natural transformation eta - that goes from 1C -> T
+a natural transformation µ - that goes from T^2 -> T
+
+Thus eta is a natural transformation that goes form the identity functor to the endofunctor T. The identity is an endofunctor that maps all objects to themselves and maps all morphisms onto themselves. The natural transformation eta, goes form the identity functor to the endofunctor T.
+
+A µ is a natural transformation that goes from a 
+
+The difference between a morhpism and a functor is that a morphism will simply talk about composition of morphisms. A functor is a structure preserving map between categories. The structure of a category is defined by its morphisms and the composition.
+
+>
+
+<
+
+So a monad is a monoid in the caategory of endofunctors. The tensor operation of the monoidal product is functor composition. Because of this, the associative sum operation of monoids is join natural transformation. 
+
+So this framework of having as our objects structure preserving maps into our categories.
+
+So you start with something we dont really care what it is. What we do care about are the layers on top of that. So we will talk primarily in terms of thelayers. So what we want of these layers, is to apply a layer and peel of a layer. A way to interpret this structure. The interpretation of this structure is the interpretation of each of the element in order that is it is associative.
+
+The monad transformer class would be an instance of such a class.
+
+ - Functors will be used to model the layers.
+ - A multiplication operation on the functors.
+ - To interpret the structure (Endofunctor m => m a -> a)
+ m a -> m (m a)
+
+This seems to be the dual of the monad category. That is lets check out the comonad class.
+
 >

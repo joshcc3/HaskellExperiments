@@ -37,7 +37,6 @@ dotPosition = undefined
 dotVelocity :: a -> Velocity
 dotVelocity = undefined
 
-Builder a = Property a -> 
 {-
 we wnat to build our object incrementally by concatenating properties. We want to build the properties by concatenating the values of the properties. The values of the properties simply exist. 
 
