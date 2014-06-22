@@ -109,3 +109,6 @@ parallelize b f cs = loop $ second (delay cs) >>> arr g
         func (b',cs) c = undefined -- bimap (f b') (:cs) (runC c a)
 
 
+instance Monoid b => Monoid (Coroutine a b) where
+  mempty       = constC mempty
+  mappend c c' = c &&& c' >>> arr $ mappend . uncurry

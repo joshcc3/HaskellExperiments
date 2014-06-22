@@ -16,7 +16,28 @@ data State a = State { dots :: Map Index (Dot a) }
 type Map a b = [(a, b)]
 
 
-collides :: Int -> Map Index (Dot a) -> (Index, Index) -> ((DotPos, Velocity), (DotPos, Velocity)) -> Bool
+
+dotsToRect :: Map Index (Dot a) -> Rects
+dotsToRect m =  foldWithKey func [] m
+  where
+    func b k a = mkRect k a : b
+
+
+instance Monoid (State a) where
+  mempty = State{dots=[]}
+  mappend State{dots = l} State{dots = l'} 
+     = State { dots = l `mappend` l' }
+
+instance Monoid b => Monoid (Map a b) where
+  mempty = []
+  mappend l l' = unionWith mappend [l, l']
+
+
+collides ::    Int 
+            -> Map Index (Dot a) 
+            -> (Index, Index) 
+            -> ((DotPos, Velocity), (DotPos, Velocity)) 
+            -> Bool
 collides delta config (d, d') (((x,y), _), ((x',y'), _))
    = ((dist (x'-x, y'-y)) - rad - rad') < delta
    where
@@ -35,7 +56,9 @@ collAccVecResolver ((i,i'):cs, (index,ds)) = (xAcc'', yAcc'')
     Just (pos', vel') = lookup i' ds
 
 
-collAccVecResolver' :: (Pos, Velocity) -> (Pos, Velocity) -> Acceleration
+collAccVecResolver' ::    (Pos, Velocity) 
+                       -> (Pos, Velocity) 
+                       -> Acceleration
 collAccVecResolver' ((x,y), _) ((x',y'), v')
   = project v' normal
   where

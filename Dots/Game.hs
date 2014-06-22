@@ -45,50 +45,62 @@ simplePhysics = [dotCollAdapter >>> dotCollision]
 
 
 {-
-what we are trying to do over here is to parallelize the computation of each component of the state. thus we have a list of coroutines that we must fold together. However since lists are monomorphic
+So we recieve the current state and parallelize the update of each component of the state - the dots, the animations etc. We then append all the changes together to build the new state. We then parallalize the transformation from the state components to rectangles.
 -}
 game :: GameLogic
 game = loop $ g >>> h
   where
     g :: Coroutine (a, State a) (State a)
-    g = parallelize emptyState f co
+    g = parallelize mempty mappend co
+    co = [aiDotPos simplePhysics initialSit >>> arr toState] 
     h :: Coroutine (State a) (Rects, State a)
     h = parallelize [] (++) comps &&& delay initialState
-    emptyState :: State a
-    emptyState = undefined
-    f :: State a -> State a -> State a
-    f = undefined
-    co :: [Coroutine (a, State a) (State a)]
-    co = undefined
     comps :: [Coroutine (State a) Rects]
-    comps = undefined
--- aiDotPos simplePhysics initialSit >>> arr (\ds -> foldl (\a -> \b -> a ++ [mkRect b]) [] ds)
+    comps = [arr $ dotsToRect . dots ]
 
 
-dotPos :: Velocity -> Pos -> Coroutine (Physics a, (a, State a)) (DotPos, Velocity)
+{-
+The dot position is a transformation from the current state to a new position and velocity. 
+-}
+dotPos ::    Velocity 
+          -> Pos 
+          -> Coroutine (Physics a, (a, State a)) 
+                       (DotPos, Velocity)
+
 dotPos initialVel initialPos 
   = g >>> f >>> pos initialVel initialPos
   where
-    g :: Coroutine (Physics a, (a, State a)) (Coroutine (a, State a) Acceleration,(a, State a))
+    g :: Coroutine (Physics a, (a, State a)) 
+                    (Coroutine (a, State a) Acceleration, (a, State a))
     g = first $ arr $ parallelize (0,0) (+)
     f :: Coroutine (Coroutine a Acceleration, a) Acceleration
     f = arr (fst . uncurry runC)
 
-aiDotPos :: forall a. Map Index (Physics a) -> Map Index (DotPos, Velocity) -> Coroutine (a, State a) (Map Index (DotPos, Velocity))
+
+
+aiDotPos :: forall a. Map Index (Physics a) 
+                   -> Map Index (DotPos, Velocity) 
+                   -> Coroutine (a, State a) 
+                                (Map Index (DotPos, Velocity))
 aiDotPos physics initialDotPos 
   = parallelize [] (++) (map (physicsToCoroutine initialDotPos) physics)
 
 
 -- interesting, this seems to act like a functor
-physicsToCoroutine :: forall a. Map Index (DotPos, Velocity) -> (Index, Physics a) -> Coroutine (a, State a) (Map Index (DotPos, Velocity))
+physicsToCoroutine :: forall a. Map Index (DotPos, Velocity) 
+                             -> (Index, Physics a) 
+                             -> Coroutine (a, State a) 
+                                          (Map Index (DotPos, Velocity))
 physicsToCoroutine initialDots (i, phys) 
   =     f' -- 
     >>> f'' --
     >>> f''' -- 
     where
       f' :: Coroutine (a, State a) (Index, (Physics a, (a, State a)))
-      f'' :: Coroutine (Index, (Physics a, (a, State a))) (Index, (DotPos, Velocity))
-      f''' :: Coroutine (Index, (DotPos, Velocity)) (Map Index (DotPos, Velocity))
+      f'' :: Coroutine (Index, (Physics a, (a, State a))) 
+                       (Index, (DotPos, Velocity))
+      f''' :: Coroutine (Index, (DotPos, Velocity)) 
+                        (Map Index (DotPos, Velocity))
 
       f' =  constC i &&& arr (phys,) 
       f'' =  returnA *** dotPos initialVel initialPos
@@ -117,15 +129,21 @@ collisionList = collisions:collisionList
 dotCollAdapter :: Coroutine a (Index, Map Index (DotPos, Velocity))
 dotCollAdapter = undefined
 
--- two dots collide if distance between them is less than a delta
+
 dotCollision :: Coroutine (Index, Map Index (DotPos, Velocity)) Acceleration
 dotCollision = collisions &&& returnA >>> arr collAccVecResolver
 
-collisions :: Coroutine (Index, Map Index (DotPos, Velocity)) (Event Collision)
-collisions = arr (\(i, ds) -> flip filter  [(i,x) | x <- [1..num], x /= i] (filterFunc ds))
+
+
+collisions :: Coroutine (Index, Map Index (DotPos, Velocity)) 
+                        (Event Collision)
+collisions = arr $ \(i, ds) -> flip filter pairs $ filterFunc ds
   where
     filterFunc :: Map Index (DotPos, Velocity) -> (Int, Int) -> Bool
-    filterFunc ds dots@(d, d') = collides delta config dots (al $ lookup d ds, al $ lookup d' ds)
+    filterFunc ds dots@(d, d') 
+      = collides delta config dots (al $ lookup d ds, al $ lookup d' ds)
+    pairs = [(i,x) | x <- [1..num], x /= i]
+
 
 --------------------------------------------------------------------------------
 -- | Utilities
@@ -145,8 +163,10 @@ g = fst . f . play
 
 {-
 game' :: GameLogic
-game' =  constC initialSit >>> c >>> (arr $ foldl (\a -> \b -> a ++ [mkRect b]) [])
+game' =      constC initialSit 
+         >>> c 
+         >>> (arr $ foldl (\a -> \b -> a ++ [mkRect b]) [])
   where
     incPos (i, Dot (x,y) v) = (i, Dot(x+1, y+1) v)
-    c = Coroutine (\ds -> (map incPos ds, constC (map incPos ds) >>> c))
+    c = Coroutine $ \ds -> (map incPos ds, constC (map incPos ds) >>> c)
 -}

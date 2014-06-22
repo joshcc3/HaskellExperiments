@@ -18,7 +18,9 @@ allPairs (a:as) = map (a,) as ++ (allPairs as)
 
 vecIntegrate (x,y) = integrate x *** integrate y
 
-mkRect Dot{radius = r, position = (x, y)}  = ((x-r,y-r),(2*r,2*r))
+
+toState :: Map Index (Dot a) -> State a
+toState d = State { dots = d }
 
 
 instance Num a => Num (a, a) where
@@ -37,7 +39,6 @@ dotPosition = undefined
 dotVelocity :: a -> Velocity
 dotVelocity = undefined
 
-Builder a = Property a -> 
 {-
 we wnat to build our object incrementally by concatenating properties. We want to build the properties by concatenating the values of the properties. The values of the properties simply exist. 
 
@@ -107,3 +108,5 @@ instance Arrow a => Arrow (StateFunctor s a) where
     where
       swap = arr (\((a,b) ,c) -> ((a, c) ,b))
 -}
+
+
