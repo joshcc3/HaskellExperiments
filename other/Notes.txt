@@ -376,4 +376,10 @@ The monad transformer class would be an instance of such a class.
 
 This seems to be the dual of the monad category. That is lets check out the comonad class.
 
+goal oriented. goals when concretized are the functions. Goals be treated as monoids to achieve combination of the goals. Ordering of the goals
+recursively defining goals as base case and then constructors on top of the base case, adding some computational context to the base goal. (Can be thought of as a functor) allow the user to define their own goals. Goal specification to function that goes from a -> State. Express goal language with conditionals.
 >
+
+the repe
+
+so a monad consists of an endofunctor and two natural transformations. Eta and mu. The eta natural transformation maps the identity functor to the endofunctor. The mu natural transformation maps  

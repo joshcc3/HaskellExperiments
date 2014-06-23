@@ -6,9 +6,11 @@ import Dots.Physics
 import Control.Coroutine
 import Control.Arrow
 import Control.Coroutine.FRP
+import qualified Data.Map as M
+import Dots.Rect
 
-toDots :: (Index, (DotPos, Velocity)) -> Map Index (DotPos, Velocity)
-toDots = (:[])
+toDots :: (Index, (DotPos, Velocity)) -> M.Map Index (DotPos, Velocity)
+toDots = M.fromList . (:[])
 
 al (Just x) = x
 
@@ -18,7 +20,9 @@ allPairs (a:as) = map (a,) as ++ (allPairs as)
 
 vecIntegrate (x,y) = integrate x *** integrate y
 
-mkRect Dot{radius = r, position = (x, y)}  = ((x-r,y-r),(2*r,2*r))
+
+toState :: M.Map Index (Dot a) -> State a
+toState d = State { dots = d }
 
 
 instance Num a => Num (a, a) where
@@ -28,81 +32,22 @@ instance Num a => Num (a, a) where
   signum (a, a') = undefined
   fromInteger i = undefined
 
-dotRadius :: a -> Radius
-dotRadius = undefined 
-
-dotPosition :: a -> DotPos
-dotPosition = undefined
-
-dotVelocity :: a -> Velocity
-dotVelocity = undefined
-
-instance Monoid (State a) where
-  mempty = undefined
-  mappend = undefined
-
-instance Monoid b => Monoid (Map a b) where
-  mempty  = []
-  mappend [] m = m
-  mappend m [] = m
-  mappend ((a, b):m) m' 
-    = case b' of
-        Nothing  -> b
-        (Just x) -> mappend b x
-    where
-      b' = lookup a m'
-                 
 
 
-
-{-
-we want to build our object incrementally by concatenating properties. We want to build the properties by concatenating the values of the properties. The values of the properties simply exist. 
-
-Our builder will represent the object as a map from enumerable properties to values.
-
-concatentation of two builders is simply the concatenation through zipping of the values of properties.
-
-For Dot - 
-Examples of values of properties:
-Property: radius, value: 1
-
-concatenating values:
-given (d,property) (d', property')
-
-Enumerate the properties.
+dotsToRect :: M.Map Index (Dot a) -> Rects
+dotsToRect m = M.foldl func [] m
+  where
+    func b a = mkRect a : b
 
 
-we can build our object from a map. We first enumerate the properties. Build the enumerated version of the object.
-
-concatFeature :: Last a => () -> Dot a -> Dot a -> Dot a
-concatFeature f d d' = Dot (f d' <> f d)
-
-setRadius (Dot a b c d e _) r = Dot a b c d e r
-
-So what is a builder. a builder takes some property of the object it is building and appends that property to the object. Function from property, to an incomplete object. An incomplete object is a sequence of build instructions.
-Builder a :: Property a -> a
-Property a = 
-
-data Dot a = Dot { radius :: Int, position :: DotPos, velocity :: Velocity, physics :: Physics a }
-type GameLogic = Coroutine Keyboard Rects
-type Physics a = [Coroutine (a, State a) Acceleration]
-data State a = State { dots :: Map Index (Dot a) }
--}
-
-{-
-Think about implementing a builder as a monoid. 
--}
-
-
-
+mkRect Dot{radius = r, position = (x, y)} 
+  = ((x-r,y-r),(2*r,2*r))
 
 {- 
 A functor maps objects in a category C to objects in a category D and morphisms in a category C to morphisms in a category D. 
 For functors F and G, A natural transformation n is a family of morphisms. These include morphisms that relate F(X) -> G(X), that is associate with X from the category C a morphism in category D. And for each morphism f: X -> Y, in C, F(f) o nY = nX o G(f)
 -}
 
-
-{- So what we want to do is create a reader functor. that is a functor that lifts morphisms in the base category to morphisms in the reader category. -}
 
 {-
 
@@ -124,3 +69,5 @@ instance Arrow a => Arrow (StateFunctor s a) where
     where
       swap = arr (\((a,b) ,c) -> ((a, c) ,b))
 -}
+
+

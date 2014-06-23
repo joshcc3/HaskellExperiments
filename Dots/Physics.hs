@@ -1,4 +1,10 @@
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+
 module Dots.Physics where
+
+import Prelude hiding (lookup)
+import Data.Monoid
+import Data.Map
 
 import Control.Coroutine
 
@@ -13,10 +19,23 @@ type Collision = (Index, Index)
 data Dot a = Dot { radius :: Int, position :: DotPos, velocity :: Velocity, physics :: Physics a }
 type Physics a = [Coroutine (a, State a) Acceleration]
 data State a = State { dots :: Map Index (Dot a) }
-type Map a b = [(a, b)]
 
 
-collides :: Int -> Map Index (Dot a) -> (Index, Index) -> ((DotPos, Velocity), (DotPos, Velocity)) -> Bool
+
+
+
+instance Monoid (State a) where
+  mempty = State{dots=mempty}
+  mappend State{dots = l} State{dots = l'} 
+     = State { dots = l `mappend` l' }
+
+
+
+collides ::    Int 
+            -> Map Index (Dot a) 
+            -> (Index, Index) 
+            -> ((DotPos, Velocity), (DotPos, Velocity)) 
+            -> Bool
 collides delta config (d, d') (((x,y), _), ((x',y'), _))
    = ((dist (x'-x, y'-y)) - rad - rad') < delta
    where
@@ -35,7 +54,9 @@ collAccVecResolver ((i,i'):cs, (index,ds)) = (xAcc'', yAcc'')
     Just (pos', vel') = lookup i' ds
 
 
-collAccVecResolver' :: (Pos, Velocity) -> (Pos, Velocity) -> Acceleration
+collAccVecResolver' ::    (Pos, Velocity) 
+                       -> (Pos, Velocity) 
+                       -> Acceleration
 collAccVecResolver' ((x,y), _) ((x',y'), v')
   = project v' normal
   where

@@ -1,7 +1,8 @@
-
 module Dots.Rect where
 
 import Graphics.Rendering.OpenGL hiding (Rect, Size)
+import Data.Map as M
+
 
 type Rects = [Rect]
 type Rect = (Pos,Size)
@@ -25,3 +26,8 @@ renderRects rects = do
             vertex $ vtx x (y+h)
 
     renderPrimitive Quads $ mapM_ rectVertices rects
+
+
+
+
+
