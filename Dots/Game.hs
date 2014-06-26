@@ -31,19 +31,21 @@ type GameLogic = Coroutine Keyboard Rects
 
 --------------------------------------------------------------------------------
 -- | Game Initialization
-num = 3
+num = 1
 rad = 20
 config = M.fromList $ map (, Dot {radius = rad}) [1..num]
 delta = 2
 
 initialState :: State a
-initialState = State (M.fromList [(1, Dot {radius = rad, position = (10,10), velocity = (10,10), physics = simplePhysics} )])
+initialState = State (M.fromList [(1, Dot {radius = rad, position = (10,10), velocity = (10,10), physics = simplePhysics 1} )])
 
-simplePhysics :: Physics a
-simplePhysics = [dotCollAdapter >>> dotCollision]
+simplePhysics :: Index -> Physics a
+simplePhysics i = [dotCollAdapter i >>> dotCollision]
+
+simplePhysicsList i = simplePhysics i : simplePhysicsList (i+1)
 
 simplePhysicsSystem :: M.Map Index (Physics a)
-simplePhysicsSystem = M.fromList $ zip [1..num] $ repeat simplePhysics
+simplePhysicsSystem = M.fromList $ zip [1..num] $ simplePhysicsList 1
 --------------------------------------------------------------------------------
 -- | Game logic  
 
@@ -140,8 +142,8 @@ pos initialVel initialPos
 
 collisionList = collisions:collisionList
 
-dotCollAdapter :: Coroutine a (Index, M.Map Index (DotPos, Velocity))
-dotCollAdapter = undefined
+dotCollAdapter :: Index -> Coroutine (a, State a) (Index, M.Map Index (DotPos, Velocity))
+dotCollAdapter i = constC i &&& (arr $ \(_,s) -> M.map (position &&& velocity) (dots s))  
 
 
 dotCollision :: Coroutine (Index, M.Map Index (DotPos, Velocity)) Acceleration
