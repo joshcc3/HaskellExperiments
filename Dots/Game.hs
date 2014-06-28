@@ -31,15 +31,15 @@ type GameLogic = Coroutine Keyboard Shapes
 
 --------------------------------------------------------------------------------
 -- | Game Initialization
-num = 2
+num = 3
 rad = 20
 config = M.fromList $ map (, Dot {radius = rad}) [1..num]
-delta = 1
+delta = 10
 
 
-dot1 = Dot {radius = rad, position = (0,0), velocity = (4,4), physics = simplePhysics 1}
+dot1 = Dot {radius = rad, position = (100,100), velocity = (4,4), physics = simplePhysics 1}
 
-dot2 = Dot {radius = rad, position = (50,50), velocity = (2,2), physics = simplePhysics 2}
+dot2 = Dot {radius = rad, position = (160,160), velocity = (2,2), physics = simplePhysics 2}
 
 dot3 = Dot {radius = rad, position = (250,250), velocity = (-3,-3), physics = simplePhysics 3}
 
