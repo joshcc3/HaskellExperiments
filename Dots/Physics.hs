@@ -2,6 +2,8 @@
 
 module Dots.Physics where
 
+import Control.Coroutine.FRP
+
 import Prelude hiding (lookup)
 import Data.Monoid
 import Data.Map
@@ -20,7 +22,7 @@ type Collision = (Index, Index)
 data Dot a = Dot { radius :: Int, position :: DotPos, velocity :: Velocity, physics :: Physics a } deriving (Show)
 type Physics a = [Coroutine (a, State a) Acceleration]
 data State a = State { dots :: Map Index (Dot a) } deriving (Show)
-
+type Dimensions = (Int, Int)
 
 
 instance Show (Coroutine a b) where
@@ -32,6 +34,15 @@ instance Monoid (State a) where
      = State { dots = l `mappend` l' }
 
 
+
+collidesWithWall :: Int -> Dimensions -> Map Index (Dot a) -> Index -> Int -> Pos -> Velocity -> Acceleration
+collidesWithWall delta (w, h) m i r (x, y) (xV, yV)
+  = foldl1 sumAcc [leftWall, rightWall, upperWall, lowerWall]
+  where
+    leftWall  = if (x + r + delta >= w && xV > 0) then (-xV, 0) else (0,0)
+    rightWall = if x - r - delta <  0 && xV < 0 then (-xV, 0) else (0,0)
+    upperWall = if y + r + delta >= h && yV > 0 then (0, -yV) else (0,0)
+    lowerWall = if y - r - delta <  0 && yV < 0 then (0, -yV) else (0,0)
 
 collides ::    Int 
             -> Map Index (Dot a) 
@@ -50,6 +61,16 @@ collides delta config (d, d') ((p@(x,y), v@(xV, yV)), (p'@(x',y'), v'@(xV', yV')
 
 parallel (xV, yV) (xV', yV')
   = fromInteger xV / fromInteger yV == fromInteger xV' / fromInteger yV'
+
+vecIntegrate (x,y) = integrate x *** integrate y
+
+pos ::    Velocity 
+          ->  Pos 
+          ->  Coroutine (Acceleration) (Pos, Velocity)
+pos initialVel initialPos 
+   =     vecIntegrate initialVel 
+     >>> vecIntegrate initialPos &&& arr id
+
 
 -- should use mconcat
 collAccVecResolver :: ([Collision], (Index, Map Index (DotPos, Velocity))) -> Acceleration
@@ -84,3 +105,7 @@ project v v' = (truncate $ x' *  comp / distV' , truncate $ y' * comp / distV')
 unit (x,y) = ( x / (dist (x, y) (0,0)), y / (dist (x, y) (0,0)) )
 
 dist (a,b) (a', b') = ceiling $ sqrt $ fromIntegral ((a-a')^2 + (b-b')^2)
+
+
+sumAcc :: Acceleration -> Acceleration -> Acceleration
+sumAcc (x,y) (x',y') = (x + x', y+ y')

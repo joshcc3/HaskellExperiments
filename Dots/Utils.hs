@@ -18,7 +18,6 @@ allPairs :: [a] -> [(a,a)]
 allPairs [] = []
 allPairs (a:as) = map (a,) as ++ (allPairs as)
 
-vecIntegrate (x,y) = integrate x *** integrate y
 
 
 toState :: M.Map Index (Dot a) -> State a
