@@ -28,9 +28,9 @@ toState d = State { dots = d }
 instance Num a => Num (a, a) where
   (+) (a,a') (b, b') = (a+b, a'+b')
   (*) (a, a') (b,b') = (a*b, a'*b')
-  abs v = undefined 
-  signum (a, a') = undefined
-  fromInteger i = undefined
+  abs v = error "Abs not defined" 
+  signum (a, a') = error "Signum not defined"
+  fromInteger i = (fromInteger i, 0)
 
 
 

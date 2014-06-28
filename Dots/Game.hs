@@ -31,13 +31,20 @@ type GameLogic = Coroutine Keyboard Rects
 
 --------------------------------------------------------------------------------
 -- | Game Initialization
-num = 1
+num = 3
 rad = 20
 config = M.fromList $ map (, Dot {radius = rad}) [1..num]
-delta = 2
+delta = 1
+
+
+dot1 = Dot {radius = rad, position = (30,30), velocity = (6,6), physics = simplePhysics 1}
+
+dot2 = Dot {radius = rad, position = (200,200), velocity = (2,2), physics = simplePhysics 2}
+
+dot3 = Dot {radius = rad, position = (280,250), velocity = (1,1), physics = simplePhysics 3}
 
 initialState :: State a
-initialState = State (M.fromList [(1, Dot {radius = rad, position = (10,10), velocity = (10,10), physics = simplePhysics 1} )])
+initialState = State (M.fromList [(1, dot1), (2, dot2), (3, dot3)])
 
 simplePhysics :: Index -> Physics a
 simplePhysics i = [dotCollAdapter i >>> dotCollision]
@@ -83,7 +90,7 @@ dotPos initialVel initialPos
     f :: Coroutine (Coroutine a Acceleration, a) Acceleration
     f = arr (fst . uncurry runC)
     function :: [Coroutine (a, State a) Acceleration] -> Coroutine (a, State a) Acceleration
-    function d =  parallelize (map (>>> arr Sum) d) >>> arr getSum
+    function d = parallelize (map (>>> arr Sum) d) >>> arr getSum
 
 
 aiDotPos :: forall a. M.Map Index (Physics a) 
@@ -147,7 +154,7 @@ dotCollAdapter i = constC i &&& (arr $ \(_,s) -> M.map (position &&& velocity) (
 
 
 dotCollision :: Coroutine (Index, M.Map Index (DotPos, Velocity)) Acceleration
-dotCollision = collisions &&& returnA >>> arr collAccVecResolver
+dotCollision = collisions &&& returnA >>> arr  collAccVecResolver
 
 
 
