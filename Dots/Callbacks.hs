@@ -22,7 +22,7 @@ type KeyboardRef = IORef Keyboard
 type TimeRef     = IORef POSIXTime
 type AccumRef    = TimeRef
 type PrevTimeRef = TimeRef
-type GameRef     = IORef (Rects, GameLogic)
+type GameRef     = IORef (Shapes, GameLogic)
 
 type CallbackRefs = (AccumRef, PrevTimeRef, KeyboardRef, GameRef)
 
@@ -64,7 +64,7 @@ renderViewport (ar, pr, kb, gr) = do
 
     clear [ColorBuffer]
 
-    renderRects r'
+    renderShapes r'
     -- let interpolation = realToFrac $ accum' / secPerTick
     -- renderInterpolated interpolation s'
 

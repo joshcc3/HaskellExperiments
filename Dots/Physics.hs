@@ -71,14 +71,14 @@ collAccVecResolver' ((x,y), _) ((x',y'), v')
   where	    
     normal = (x' - x, y' - y)
 
-
+-- projects v onto v'
 project :: (Int, Int) -> (Int, Int) -> (Int, Int)
-project v v' = (truncate $ x' * comp /distV' , truncate $ y' * comp / distV')
+project v v' = (truncate $ x' *  comp / distV' , truncate $ y' * comp / distV')
    where
      distV' = (x'^2+y'^2)
      (x, y) = (fromIntegral *** fromIntegral) v
      (x', y') = (fromIntegral *** fromIntegral) v'
-     comp     = x*x' + y*y'
+     comp     =  x*x' + y*y'
 
 
 unit (x,y) = ( x / (dist (x, y) (0,0)), y / (dist (x, y) (0,0)) )

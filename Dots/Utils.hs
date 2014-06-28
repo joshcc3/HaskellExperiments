@@ -34,15 +34,21 @@ instance Num a => Num (a, a) where
 
 
 
-dotsToRect :: M.Map Index (Dot a) -> Rects
+dotsToRect :: M.Map Index (Dot a) -> Shapes
 dotsToRect m = M.foldl func [] m
   where
     func b a = mkRect a : b
 
+dotsToCircle :: M.Map Index (Dot a) -> Shapes
+dotsToCircle m = M.foldl func [] m
+  where
+    func b a = mkCircle a : b
 
 mkRect Dot{radius = r, position = (x, y)} 
-  = ((x-r,y-r),(2*r,2*r))
+  = Rectangle (x-r,y-r) (2*r,2*r)
 
+mkCircle Dot{radius = r, position = p}
+  = Circle p r
 {- 
 A functor maps objects in a category C to objects in a category D and morphisms in a category C to morphisms in a category D. 
 For functors F and G, A natural transformation n is a family of morphisms. These include morphisms that relate F(X) -> G(X), that is associate with X from the category C a morphism in category D. And for each morphism f: X -> Y, in C, F(f) o nY = nX o G(f)

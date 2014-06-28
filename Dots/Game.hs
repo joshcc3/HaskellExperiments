@@ -27,21 +27,21 @@ We want to make a simple game where there are some dots (circles). Each of these
 The position of the dot is the integration of the speed vector. The speed vector is the integration of the acceleration vector. The acceleration vector for all except the users bot is constant except at collisions. And collisions depend on the units positions, thus we have an arrow loop.
 -}
 
-type GameLogic = Coroutine Keyboard Rects
+type GameLogic = Coroutine Keyboard Shapes
 
 --------------------------------------------------------------------------------
 -- | Game Initialization
-num = 3
+num = 2
 rad = 20
 config = M.fromList $ map (, Dot {radius = rad}) [1..num]
 delta = 1
 
 
-dot1 = Dot {radius = rad, position = (30,30), velocity = (6,6), physics = simplePhysics 1}
+dot1 = Dot {radius = rad, position = (0,0), velocity = (4,4), physics = simplePhysics 1}
 
-dot2 = Dot {radius = rad, position = (200,200), velocity = (2,2), physics = simplePhysics 2}
+dot2 = Dot {radius = rad, position = (50,50), velocity = (2,2), physics = simplePhysics 2}
 
-dot3 = Dot {radius = rad, position = (280,250), velocity = (1,1), physics = simplePhysics 3}
+dot3 = Dot {radius = rad, position = (250,250), velocity = (-3,-3), physics = simplePhysics 3}
 
 initialState :: State a
 initialState = State (M.fromList [(1, dot1), (2, dot2), (3, dot3)])
@@ -67,10 +67,10 @@ game = loop $ g >>> h
     g = parallelize co
     co :: [Coroutine (a, State a) (State a)]
     co = [aiDotPos simplePhysicsSystem initialDotPos >>> arr toState] 
-    h :: Coroutine (State a) (Rects, State a)
+    h :: Coroutine (State a) (Shapes, State a)
     h = parallelize comps &&& delay initialState
-    comps :: [Coroutine (State a) Rects]
-    comps = [arr $ dotsToRect . dots ]
+    comps :: [Coroutine (State a) Shapes]
+    comps = [arr $ dotsToCircle . dots ]
     initialDotPos = dots initialState
 
 {-
