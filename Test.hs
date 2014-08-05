@@ -3,8 +3,9 @@ module Test where
 import MonadInstances
 
 
--- Cont ((a -> r) -> r)
-
+test = do
+  a <- print "Success"
+  return a
 
 
 
