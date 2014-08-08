@@ -11,9 +11,13 @@ import qualified Data.Map as M
 import Control.Applicative
 import Control.Monad.Free
 
+type Res b = StateT (St b) IO ()
+
+type St b = M.Map String b
+
 type Expr a b = ReaderT a Maybe b
 
-type Expr' b = Expr (M.Map String b) b
+type Expr' b = Expr (St b) b 
 
 data CFlow b a =   If (Expr' Bool) a a
                | While (Expr' Bool) a
@@ -30,10 +34,20 @@ instance Functor (CFlow b) where
 
 -- Create an F-Algebra with the endofunctor CFlow
 
-alg :: CFlow b a -> a
-alg Skip = undefined
+alg Skip = return ()
+alg (Ass s e) = do
+  state <- get
+  put $ M.update (const $ runReaderT e state) s state
+  return ()
+alg (If b t e) =  get >>= f . runReaderT b >> return ()
+    where 
+      f Nothing = alg Skip
+      f (Just b) = if b then t else e
+alg (Seq s s') = s >> s'
+alg w@(While c s) = alg $ If c (s >> alg w) $ alg Skip
 
-    
+
+
                
 instance Num a => Num (Expr' a) where
     e + e' = (+) <$> e <*> e'
