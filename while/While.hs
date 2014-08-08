@@ -10,14 +10,18 @@ import Control.Monad.Identity
 import qualified Data.Map as M
 import Control.Applicative
 import Control.Monad.Free
+import Data.Fix
 
-type Res b = StateT (St b) IO ()
 
-type St b = M.Map String b
+type Res b     = StateT (St b) IO ()
 
-type Expr a b = ReaderT a Maybe b
+type St b      = M.Map String b
 
-type Expr' b = Expr (St b) b 
+type Expr a b  = ReaderT a Maybe b
+
+type Expr' b   = Expr (St b) b 
+
+type Prog b = Fix (CFlow b)
 
 data CFlow b a =   If (Expr' Bool) a a
                | While (Expr' Bool) a
@@ -26,48 +30,54 @@ data CFlow b a =   If (Expr' Bool) a a
                | Skip
 
 instance Functor (CFlow b) where
-    fmap f (If b t e) = If b (f t) (f e)
+    fmap f (If b t e)  = If b (f t) (f e)
     fmap f (While c s) = While c (f s)
-    fmap f (Seq s s') = Seq (f s) (f s')
-    fmap f (Ass s e) = Ass s e
-    fmap f Skip = Skip
+    fmap f (Seq s s')  = Seq (f s) (f s')
+    fmap f (Ass s e)   = Ass s e
+    fmap f Skip        = Skip
 
 -- Create an F-Algebra with the endofunctor CFlow
 
-alg Skip = return ()
-alg (Ass s e) = do
+
+alg Skip          = return ()
+alg (Ass s e)     = do
   state <- get
   put $ M.update (const $ runReaderT e state) s state
   return ()
-alg (If b t e) =  get >>= f . runReaderT b >> return ()
+alg (If b t e)    =  get >>= f . runReaderT b >> return ()
     where 
-      f Nothing = alg Skip
-      f (Just b) = if b then t else e
-alg (Seq s s') = s >> s'
+      f Nothing   = alg Skip
+      f (Just b)  = if b then t else e
+alg (Seq s s')    = s >> s'
 alg w@(While c s) = alg $ If c (s >> alg w) $ alg Skip
 
 
 
                
 instance Num a => Num (Expr' a) where
-    e + e' = (+) <$> e <*> e'
-    e * e' = (*) <$> e <*> e'
-    abs = (abs <$>)
-    signum = (signum <$>)
+    e + e'        = (+) <$> e <*> e'
+    e * e'        = (*) <$> e <*> e'
+    abs           = (abs <$>)
+    signum        = (signum <$>)
     fromInteger i = return $ fromInteger i
 
 -- | Convenience boolean oeprators
 e ~== e' = (==) <$> e <*> e'
 e ~&& e' = (&&) <$> e <*> e'
 e ~|| e' = (||) <$> e <*> e'
-e ~> e' = (>) <$> e <*> e'
-e ~< e' = (<) <$> e <*> e'
+e ~> e'   = (>) <$> e <*> e'
+e ~< e'  = (<) <$> e <*> e'
 
 var :: String -> Expr' a
 var s = ask >>= lift . M.lookup s
 
+exp2 :: Expr' Int
+exp2 = 10 + var "s"
+
 exp1 :: Expr' Int
 exp1 = 3 + 4 + var "s"
+
+-- prog1 = cata alg $ Fix $ If (exp1 ~== exp2) (Fix (Ass "s" 5)) (Fix (Ass "s" 10))
 
 main = do
     print $ runReaderT exp1 $ M.fromList []
