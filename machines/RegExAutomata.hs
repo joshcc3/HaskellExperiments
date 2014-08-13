@@ -1,10 +1,12 @@
-
+ 
+import Pipes
 import Prelude hiding ((.), id)
 import Control.Applicative
 import Machine
+import qualified Pipes.Prelude as P
 
 type RegExAut  = Moore Char St
-data St        = A | N deriving (Eq, Show)
+data St        = A | N | Error deriving (Eq, Show)
 data Tok = IF | FOR | OPEN_P | CLOSE_P | INT_LIT Int | SEMI_COLON | VAR Char | EQUALS
 
 
@@ -30,19 +32,18 @@ Then we want to append these machines together to be able to parse a string.
 
 
 cm :: Char -> Moore Char St
-cm c  = Moore N $ \c' -> if c == c' then pure A else cm c
+cm c  = Moore N $ \c' -> if c == c' then pure A else pure Error
 
-(.) :: Moore Char St -> Moore Char St -> Moore Char St
-(.) (Moore N f) m = Moore N $ \c -> f c . m 
-
+(.) :: Moore a St -> Moore a St -> Moore a St
+(.) (Moore N f) m     = Moore N $ \c -> f c . m 
+(.) (Moore A f) m     = m
+(.) (Moore Error f) m = pure Error
 
 toRegEx :: String -> Moore Char St
 toRegEx s = foldl1 (.) $ map cm s
 
 ifR = toRegEx "if"
-for = toRegEx "for"
+forR = toRegEx "for"
 openP = toRegEx "("
 closeP = toRegEx ")"
 
-
--- so if we wanted to allow us to program as

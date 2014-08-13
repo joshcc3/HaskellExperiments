@@ -8,7 +8,7 @@ import Prelude hiding ((.), id)
 import Data.Monoid
 import Control.Monad.Trans.Maybe
 
-data Moore a b = Moore b (a -> Moore a b)
+data Moore a b = Moore {view :: b, step :: (a -> Moore a b)}
 
 newtype Moore' a b = Moore' (MaybeT (Moore a) b)
 
