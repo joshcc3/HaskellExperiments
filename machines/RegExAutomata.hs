@@ -1,10 +1,14 @@
+{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
 
-import Prelude hiding ((.), id)
+module Main where
+    
+import Prelude hiding ((.), id, (*))
 import Control.Applicative
 import Machine
+import Data.Monoid
 
 type RegExAut  = Moore Char St
-data St        = A | N deriving (Eq, Show)
+data St        = A | N | Err deriving (Eq, Show)
 data Tok = IF | FOR | OPEN_P | CLOSE_P | INT_LIT Int | SEMI_COLON | VAR Char | EQUALS
 
 
@@ -29,14 +33,28 @@ Then we want to append these machines together to be able to parse a string.
 -- to parse multiple tokens
 
 
-cm :: Char -> Moore Char St
-cm c  = Moore N $ \c' -> if c == c' then pure A else cm c
 
-(.) :: Moore Char St -> Moore Char St -> Moore Char St
+instance Monoid St where
+    mempty = Err
+    mappend A _ = A
+    mappend _ A = A
+    mappend Err Err = Err
+    mappend _ _ = N
+
+cm :: Eq a => a -> Moore a St
+cm c  = Moore N $ \c' -> if c == c'  then pure A else pure Err
+
+(.) :: Moore a St -> Moore a St -> Moore a St
 (.) (Moore N f) m = Moore N $ \c -> f c . m 
+(.) (Moore A f) m = m
+(.) (Moore Err f) _ = pure Err
+
+(*) :: Moore a St -> Moore a St
+(*) m = m . (pure A <> (*)m)
 
 
-toRegEx :: String -> Moore Char St
+
+toRegEx :: Eq a => [a] -> Moore a St
 toRegEx s = foldl1 (.) $ map cm s
 
 ifR = toRegEx "if"
@@ -45,4 +63,11 @@ openP = toRegEx "("
 closeP = toRegEx ")"
 
 
--- so if we wanted to allow us to program as
+
+run :: [a] -> Moore a St -> Moore a St
+run [] m = m
+run (c:cs) m = run cs (runMoore m c)
+
+main = do
+    s <- getLine
+    print $ view $ run s $ for <> ifR <> openP
