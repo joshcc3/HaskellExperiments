@@ -62,10 +62,10 @@ for = toRegEx "for"
 openP = toRegEx "("
 closeP = toRegEx ")"
 
-
+          
 
 run :: [a] -> Moore a St -> Moore a St
-run [] m = m
+run [] m = pure $ view m
 run (c:cs) m = run cs (runMoore m c)
 
 main = do
