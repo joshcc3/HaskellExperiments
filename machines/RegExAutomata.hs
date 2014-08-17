@@ -1,12 +1,15 @@
- 
-import Pipes
-import Prelude hiding ((.), id)
+{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
+
+module Main where
+    
+import Prelude hiding ((.), id, (*))
 import Control.Applicative
 import Machine
-import qualified Pipes.Prelude as P
+import Data.Monoid
+import Control.Monad
 
-type RegExAut  = Moore Char St
-data St        = A | N | Error deriving (Eq, Show)
+type RegExAut b = Moore Char (St b)
+data St a       = A a | N | Err deriving (Eq, Show)
 data Tok = IF | FOR | OPEN_P | CLOSE_P | INT_LIT Int | SEMI_COLON | VAR Char | EQUALS
 
 
@@ -31,19 +34,50 @@ Then we want to append these machines together to be able to parse a string.
 -- to parse multiple tokens
 
 
-cm :: Char -> Moore Char St
-cm c  = Moore N $ \c' -> if c == c' then pure A else pure Error
+instance Functor St where
+    fmap f (A a) = A $ f a
+    fmap f N = N
+    fmap f Err = Err
 
-(.) :: Moore a St -> Moore a St -> Moore a St
-(.) (Moore N f) m     = Moore N $ \c -> f c . m 
-(.) (Moore A f) m     = m
-(.) (Moore Error f) m = pure Error
+instance Monoid a => Monoid (St a) where
+    mempty = Err
+    mappend (A a) (A a') = A $ a <> a'
+    mappend _ (A a) = A a
+    mappend (A a) _ = A a
+    mappend Err Err = Err
+    mappend _ _ = N
 
-toRegEx :: String -> Moore Char St
-toRegEx s = foldl1 (.) $ map cm s
+--cm :: (Eq a) => a -> Moore a (St [b])
+cm c b = Moore N $ \c' -> if c == c' then pure $A [b] else pure Err
 
-ifR = toRegEx "if"
-forR = toRegEx "for"
-openP = toRegEx "("
-closeP = toRegEx ")"
+(.) :: (Monoid b) => Moore a (St b) -> Moore a(St b) -> Moore a (St b)
+(.) (Moore N f) m = Moore N $ \c -> f c . m 
+(.) (Moore (A a) f) m = pure (A a) <> m
+(.) (Moore Err f) _ = pure Err
 
+(*) :: Moore a  (St [b]) -> Moore a (St [b])
+(*) m = m . (*)m
+
+
+--toRegEx :: (Eq a, Monoid b) => [(a, b)] -> Moore a (St b)
+toRegEx s = foldl1 (.) $ map (uncurry cm) s 
+
+      
+tag :: [b] -> [(b, [b])]
+tag = map $ (fmap (:[]) . join (,))
+      where
+        (.) f g x = f (g x)
+
+ifR = toRegEx $ tag "if"
+forR = toRegEx $ tag "for"
+openP = toRegEx $ tag "("
+closeP = toRegEx $ tag ")"
+spc = toRegEx $ tag " "
+
+run :: [a] -> Moore a (St b) -> Moore a (St b)
+run [] m = pure $ view m
+run (c:cs) m = run cs (runMoore m c)
+
+main = do
+    s <- getLine
+    print $ view $ run s $ (*) $ ifR . spc . forR

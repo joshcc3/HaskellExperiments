@@ -4,18 +4,19 @@ module Machine where
 
 import Control.Applicative
 import Control.Comonad
-import Prelude hiding ((.), id)
+
 import Data.Monoid
 import Control.Monad.Trans.Maybe
 
-data Moore a b = Moore {view :: b, step :: (a -> Moore a b)}
 
-newtype Moore' a b = Moore' (MaybeT (Moore a) b)
+data Moore a b = Moore {view :: b, runMoore :: (a -> Moore a b)}
+
+-- | A source is a machine that is irrespective of the input
+type Source b = forall a. Moore a b
+
 
 instance Functor (Moore a) where
     fmap f (Moore b g) = Moore (f b) (fmap f . g)
-        where
-            (.) f g x = f (g x)
     
 instance Applicative (Moore a) where
     pure x = Moore x $ const $ pure x
@@ -31,9 +32,6 @@ instance Monad (Moore a) where
 instance Comonad (Moore a) where
     extract (Moore b _) = b
     duplicate m@(Moore b f) = Moore m $  duplicate . f
-        where
-        (.) f g x = f (g x)
-
 
 
 
@@ -41,5 +39,9 @@ instance Monoid b => Monoid (Moore a b) where
     mempty = Moore mempty $ const mempty
     mappend m m' = liftA2 mappend m m' 
 
+yield :: c -> Source (Maybe c)
+yield c = Moore (Just c) $ const $ pure Nothing
 
+stream :: [c] -> Source (Maybe c)
+stream = foldl1 (>>) . map yield
 
