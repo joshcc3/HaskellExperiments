@@ -26,3 +26,78 @@ phi n = µ ^ n $ emptySet
 notContainingSelf = U $ \a ->not $ a |> a
 
 russelsParadox = notContainingSelf |> notContainingSelf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{-# LANGUAGE RankNTypes, FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, ScopedTypeVariables #-}
+
+module Main where
+    
+import Prelude hiding ((.), id, (*))
+import Control.Applicative
+import Data.Monoid
+
+
+data St = Err | N | A deriving (Eq, Show, Ord, Bounded)
+
+
+instance Monoid St where
+    mempty = minBound
+    mappend = max
+
+data StT a = ErrT a | NT a | AT a deriving (Eq, Show, Ord)
+
+{-
+
+
+M x N -> O
+
+O { unit, mappend }
+
+M:m N:n O:o -> f : m x n -> o
+M:m' N:n' O:o' -> m' x n' -> o'
+
+o <> mempty = o
+mempty <> o = o
+o <> (o' <> o'') = (o <> o') <> o''
+
+f(m x n) <> mempty = f(m x n)
+mempty <> f(m x n) = f(m x n)
+f(m x n) <> (f(m' x n') <> f(m'' x n'')) = (f(m x n) <> f(m' x n')) <> f(m'' x n'')
+
+Are the above laws sufficient to adequately describe the notion presented by StT [a].
+what that succeeds in doing is allowing the outer monoid to perform its
+
+-}
+
+class (Monoid a, Monoid b) => MonHomo a b c | a b -> c where
+    hom :: a -> b -> c
+
+instance MonHomo St [a] (StT [a]) where
+    hom A l = AT l
+    hom Err l = ErrT l
+    hom N l = NT l
+
+instance Monoid (StT [a]) where
+    mempty = ErrT (mempty)
+    mappend (AT a) (AT b) = AT $ a <> b
+    mappend (AT a) _ = AT $ a 
+    mappend _ (AT a) = AT $ a
+    mappend (ErrT a) (ErrT b) = ErrT $ a <> b
+    mappend (NT a) (NT b) = NT $ a <> b
+    mappend (NT a) _ = NT a
+    mappend _ (NT a) = NT a
+
+
+    
