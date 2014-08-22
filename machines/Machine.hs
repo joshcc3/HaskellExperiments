@@ -24,10 +24,11 @@ instance Applicative (Moore a) where
 
 instance Monad (Moore a) where
     return = pure
-    Moore b f >>= g = Moore b' $ \a -> f a >>= g
-        where
-          Moore b' f' = g b
-
+    k >>= f = j (fmap f k) where
+        j (Moore a g) = Moore (extract a) (\x -> j $ fmap (\(Moore _ h) -> h x) (g x))
+-- this bind works on as follows, first a machine of a machine is created with the fmap such that its like the second machine which
+-- is a reader on the first is sortve composed with the first. Each step of the machine, will progress k along one of its branches 
+-- and simulateously along each of the sub branches progress the machine at those points using the same input.
 
 instance Comonad (Moore a) where
     extract (Moore b _) = b
