@@ -10,6 +10,9 @@ import Control.Arrow hiding (left, right)
 import Control.Monad
 import Mon
 
+type RegExAut = forall b. Moore Char b
+data Tok = IF | FOR | OPEN_P | CLOSE_P | INT_LIT Int | SEMI_COLON | VAR Char | EQUALS
+
 data List a = Nil | C a (List a) deriving (Eq, Ord, Show, Functor)
 
 instance Monoid (List a) where
@@ -20,7 +23,7 @@ instance Monoid (List a) where
     
 
 type St = E (E () ())
-    
+
 type DualMonStack = Compose Dual St 
 
 hom :: St b -> DualMonStack b
@@ -35,21 +38,30 @@ err = L $ L ()
 
 
 match :: (Eq a, Monoid b) => a -> b -> Moore a (St b) 
-match c b = Moore (L $ R ()) $ \c' -> if c == c' then pure $ R b else pure $ L $ L () 
+match c b = Moore n $ \c' -> if c == c' then pure $ acc b else pure err 
 
-(<.>) :: (Monoid b) => forall a. Moore a b -> Moore a b -> Moore a b
-m <.> m' = m >>= (mappend m' . pure)
+(<.>) :: (Monoid b) => forall a. Moore a (St b) -> Moore a (St b) -> Moore a (St b)
+m <.> m' = m >>= f
+    where
+        f = g . either (either errorHandler nHandler) acceptHandler
+        errorHandler _ = pure err <> m'
+        acceptHandler b = pure (acc b) <> m'
+        nHandler _ = pure n <> Moore mempty (const m')
+        g :: E (E (Moore a b) (Moore a b)) (Moore a b) -> Moore a b
+        g (R x) = x
+        g (L (L x)) = x
+        g (L (R x)) = x
 
-(*) :: Monoid b => Moore a b -> Moore a b
-(*) m = m <.> (*)m
-          
+(*) :: Monoid b => Moore a (St b) -> Moore a (St b)
+(*) m =  m <.> (*)m
+
 
 toRegEx :: (Eq a, Monoid b) => [(a, b)] -> Moore a (St b)
 toRegEx = foldl1 (<.>) . map (uncurry match) 
 
 tag :: [b] -> [(b, List b)]
 tag = map $ (fmap (flip C Nil) . join (,))
-          
+
 
 ifR = toRegEx $ tag "if"
 forR = toRegEx $ tag "for"
