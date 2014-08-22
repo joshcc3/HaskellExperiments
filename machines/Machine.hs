@@ -35,13 +35,8 @@ instance Comonad (Moore a) where
 
 
 
-instance Monoid b => Monoid (Moore a b) where
-    mempty = Moore mempty $ const mempty
-    mappend m m' = liftA2 mappend m m' 
-
 yield :: c -> Source (Maybe c)
 yield c = Moore (Just c) $ const $ pure Nothing
 
 stream :: [c] -> Source (Maybe c)
 stream = foldl1 (>>) . map yield
-
