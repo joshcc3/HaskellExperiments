@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, PolyKinds, GADTs #-}
 
 module Mon where
 
@@ -7,8 +7,8 @@ import Data.Monoid
 import Control.Monad
 import Control.Arrow
 
-data E a b = L a | R b deriving (Eq, Ord, Show)
 
+data E a b = L a | R b deriving (Eq, Ord, Show)
 
 left :: E a b -> Maybe a
 left (L a)  = Just a
@@ -28,6 +28,12 @@ instance Monoid a => Applicative (E a) where
     (L x) <*>  (L y) = L (x <> y)
     (L x) <*> _ =  L x
     _ <*> (L x) = L x
+
+
+iso :: E a b -> E b a
+iso (L x) = R x
+iso (R x) = L x
+
 
 
 either :: (a -> b) -> (c -> d) -> E a c -> E b d
@@ -61,6 +67,7 @@ instance Functor Identity where
 instance Applicative Identity where
     pure x = Identity x
     (Identity f) <*> (Identity a) = Identity $ f a
+
 
 instance (Applicative f, Monoid a) => Monoid (f a) where
     mempty = pure mempty
