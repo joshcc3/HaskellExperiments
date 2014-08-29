@@ -2,7 +2,7 @@ module Main where
 
 import Prelude hiding (Either(..), either, (*), (^))
 import RegExAutomata
-import Control.Applicative
+import Control.Applicative hiding ((<|>))
 import Data.Monoid 
 import Control.Arrow
 
@@ -26,18 +26,16 @@ f m x = h (g m <> g (m <.> x))
 
 
 
-regex = {-h (g base <> g (base <.> (h (g base <> g -} (base <.> (h (g base <> g base )))--))))
+regex =  base <.> (base <|> base)
 -- (f base ^ 10) base
     where 
       base = ifR <.> spc
-      g = fmap hom
-      h = fmap hom'
 
 
 
 -- m <> (m <.> (m <> (m <.> m)))
 -- m <> (m <.> m <> m <.> m <.> m)
--- m <> m <.> m <> m <.> m <.> m
+-- m <> m <.> m <> m <.> m <.> m ... 
 
 
 regex' = 
