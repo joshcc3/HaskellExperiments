@@ -1,30 +1,27 @@
-{-# LANGUAGE RankNTypes, ScopedTypeVariables, OverlappingInstances, DeriveFunctor, GADTs, PolyKinds #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, RankNTypes, ScopedTypeVariables, OverlappingInstances, DeriveFunctor, GADTs, PolyKinds #-}
 
 module RegExAutomata where
 
-import Prelude hiding (Either(..), either, (*))
+import Prelude hiding (either, (*))
 import Control.Applicative hiding ((<|>))
-import Data.Monoid hiding (Last, getLast)
+import Data.Monoid 
 import qualified Control.Category as C
-import Control.Arrow
+import Control.Arrow hiding ((|||))
 import qualified Data.Machine as M
 import Control.Arrow hiding (left, right)
 import Control.Monad
 import Mon
 import Data.Sequence
+import qualified Data.Bifunctor as B
 
 data Tok = IF | FOR | OPEN_P | CLOSE_P | INT_LIT Int | SEMI_COLON | VAR Char | EQUALS
 
 data List a = Nil | C a (List a) deriving (Eq, Ord, Show, Functor)
 
 {-
-F(f) . F(g) = F(f * g) 
+
 
 -}
-
-
-    
-
 
 instance Monoid (List a) where
     mempty = Nil
@@ -41,47 +38,75 @@ iso'' :: [a] -> List a
 iso'' [] = Nil
 iso'' (a : as) = C a (iso'' as)
 
-type St = E (E () ())
+-- our state is Nothing | Err | N | Acc x
+type St = E (E (E () ()) ())
 
-hom :: E (E a b) b1 -> E b1 (E b a)
-hom = fmap iso . iso 
+instance Show b => Show (St b) where
+    show (L (L (L ()))) = "Nothing"
+    show (L (L (R ()))) = "Error"
+    show (L (R ())) = "Not Accepting"
+    show (R b) = "Accepting " ++ show b
 
-hom' :: E b1 (E b a) -> E (E a b) b1
-hom' = iso . fmap iso 
+hom = (fmap . fmap) iso . fmap iso . iso
 
-g :: E (E b a1) a -> E (E b a1) a
-g = iso . fmap iso . fmap iso . iso
+-- fmap f . fmap g = fmap (f . g)
+-- fmap (f . g) = fmap f . fmap g
+-- fmap (fmap iso) . fmap iso . iso
+-- (fmap . fmap) iso . fmap iso . iso
+-- hom x = fmap^n x <> fmap^(n-1) x <> ... fmap^(0) x
+-- hom x = iso + fmap . hom
+-- x = 1 + y*x
+-- (1 - y)*x = 1
+-- x = 1/(1 - y) 
+-- hom = iso/(iso - fmap)
+
+hom' = iso . fmap iso . (fmap . fmap) iso
+
+stIso :: E (E (E () ()) ()) b -> Either (Either (Either () ()) ()) b
+stIso = (B.first . B.first) isoE . B.first isoE . isoE
+
+stIso' :: Either (Either (Either a b) c1) c -> E (E (E a b) c1) c
+stIso' = (B.first . B.first) isoE' . B.first isoE' . isoE'
 
 acc :: b -> St b
 acc t =  R t
 n :: St a
 n =  L $ R ()
 err :: St a
-err = L $ L ()
+err = L $ L $ R ()
+nothing = L (L (L ()))
 
-
-dot = M.Mealy $ \a -> (acc (C a Nil), pure $ acc (C a Nil))
+dot b = M.Mealy $ \a -> (acc (C b Nil), pure (acc (C b Nil)))
 
 match :: (Eq a, Monoid b) => a -> b -> M.Mealy a (St b)
 match c b = M.Mealy $ \a -> if a == c then (acc b, pure $ acc b) else (err, pure err)
--- (base <.> (h (g base <> g base ))
+-- (base <.> (h (g base <> g base))
 (<.>) :: Monoid b => forall a. M.Mealy a (St b) -> M.Mealy a (St b) -> M.Mealy a (St b)
-(<.>) m m' = C.id &&& m >>> M.unfoldMealy f (m', False)
+(<.>) m m' =     C.id &&& (m >>> arr isoE) 
+             >>> arr distributes 
+             >>> arr (L . snd) ||| machine
     where 
-      f s (_, L(L ())) = (err, s)
-      f s (_, L(R ())) = (n, s)
-      f s@(machine, flag) (inp, a) = if flag then (a <> (fst $ M.runMealy machine inp), (snd $ M.runMealy machine inp, flag)) else (n, (machine, True))
+--      machine :: M.Mealy (a, b) (St b)
+      machine =    (dropMealy 1 mempty >>> (C.id ||| m')) *** arr R 
+                >>> arr (uncurry (<>))
 
+dropMealy :: Int -> d -> M.Mealy a (Either d a)
+dropMealy n d = M.unfoldMealy (\s a -> if s > 0 then (Left d, s - 1) else (Right a, s)) n
 
+{-
+{-
+Right so we need to redefine <.> (*) and <+> (+) so that <.> distributes over <+>.
+We need to redefine the plus.
+So the answer should be expressed as the result of logging the machine. 
+-}
 (<|>) :: Monoid b => M.Mealy a (St b) -> M.Mealy a (St b) -> M.Mealy a (St b)
-(<|>) m m' =  undefined -- m <> fmap 
---    where 
---      homomorph = fmap (Compose . pure)
-
-
+(<|>) m m' =  h $ g m <> g m'
+    where 
+      g = fmap hom
+      h = fmap hom'
 
 (*) :: Monoid b => M.Mealy a (St b) -> M.Mealy a (St b)
-(*) m = undefined -- m <> (m <.> (*)m)
+(*) m = m <> (m <.> (*)m)
 --(*) m = fmap hom' (fmap hom m <> fmap hom (m <.> (*)m))
 
 
@@ -103,7 +128,7 @@ match :: (Eq a, Monoid b) => a -> b -> Moore a (St b)
 match c b = Moore n $ \c' -> if c == c' then pure $ acc b else pure err 
 
 -}
-
+-}
 instance Monoid b => Monoid (M.Mealy a b) where
     mempty = pure mempty
     mappend = liftA2 mappend
@@ -126,5 +151,3 @@ spc = toRegEx $ tag " "
 run :: M.Mealy a1 a -> [a1] -> a1 -> a
 run m [] final = fst $ M.runMealy m final
 run m (l:ls) final = run (snd $ M.runMealy m l) ls final
-
-

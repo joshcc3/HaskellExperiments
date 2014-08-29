@@ -2,13 +2,13 @@
 
 module Mon where
 
+import Data.Bifunctor
 import Control.Applicative
 import Data.Monoid
 import Control.Monad
-import Control.Arrow
+import Control.Arrow 
 
-
-data E a b = L a | R b deriving (Eq, Ord, Show)
+data E a b = L a | R b deriving (Eq, Ord)
 
 left :: E a b -> Maybe a
 left (L a)  = Just a
@@ -17,6 +17,24 @@ left _ = Nothing
 right :: E a b -> Maybe b
 right (R a)  = Just a
 right _ = Nothing
+
+isoE (L x) = Left x
+isoE (R x) = Right x
+
+isoE' (Left x) = L x
+isoE' (Right x) = R x
+
+distributes :: (t1, Either t t2) -> Either (t1, t) (t1, t2)
+distributes (a, Left x) = Left (a, x)
+distributes (a, Right x) = Right (a, x)
+
+distributes' ::  Either (a, b) (a, c)-> (a, Either b c)
+distributes' (Left (a, x)) = (a, Left x)
+distributes' (Right (a, x)) = (a, Right x)
+
+instance Bifunctor E where
+    bimap l r (L x) = L $ l x
+    bimap l r (R x) = R $ r x
 
 instance Functor (E a) where
     fmap f (L a )  = L a

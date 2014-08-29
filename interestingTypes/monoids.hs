@@ -6,6 +6,23 @@ import Data.Monoid
 
 data E a b = L a | R b deriving (Eq, Ord, Show)
 
+
+{-
+Either is a very interesting type. Its a sum type and we can see loads of connections with
+the actual sums. For example:
+Im not sure what this property is but the ismorphism that goes from an infinite nesting
+of Eithers in the form (E (E ... (E a b) ... bn) bm) 
+is of the form
+base (L x) = R x
+base (R x) = L x
+iso = fmap^n >>= fmap^(n-1) >>= .... >>= fmap^0
+the inverse of this function will be the dual monoid, which I think is absolutely beautiful.
+The dual monoid composed with the monoid and vice versa giving identity. Absolutely beautiful.
+Look into it being the reader monad and how this actually corresponds with some stuff.
+-}
+
+
+
 instance Functor (E a) where
     fmap f (L a )  = L a
     fmap f (R b) = R $ f b
@@ -46,6 +63,7 @@ instance Applicative Identity where
 instance (Applicative f, Monoid a) => Monoid (f a) where
     mempty = pure mempty
     mappend = liftA2 mappend
+
 
 type St a = E (E () ()) a
     
