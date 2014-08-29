@@ -4,11 +4,17 @@ module Mon where
 
 import Data.Bifunctor
 import Control.Applicative
-import Data.Monoid
-import Control.Monad
-import Control.Arrow 
+import Data.Monoid hiding (Last, getLast)
+import Control.Monad 
+import Control.Arrow
+import qualified Data.Semigroup as S
 
 data E a b = L a | R b deriving (Eq, Ord)
+
+newtype Last a = Last {getLast :: a}
+
+instance S.Semigroup (Last a) where
+    (<>) x y = y
 
 left :: E a b -> Maybe a
 left (L a)  = Just a
@@ -40,10 +46,13 @@ instance Functor (E a) where
     fmap f (L a )  = L a
     fmap f (R b) = R $ f b
 
-instance Monoid a => Applicative (E a) where
+instance (S.Semigroup a, S.Semigroup b) => S.Semigroup (E a b) where
+    (<>) = undefined
+    
+instance S.Semigroup a => Applicative (E a) where
     pure x = R x
     (R x) <*> (R y) = R $ x y
-    (L x) <*>  (L y) = L (x <> y)
+    (L x) <*>  (L y) = L (x S.<> y)
     (L x) <*> _ =  L x
     _ <*> (L x) = L x
 
@@ -90,4 +99,3 @@ instance Applicative Identity where
 instance (Applicative f, Monoid a) => Monoid (f a) where
     mempty = pure mempty
     mappend = liftA2 mappend
-
