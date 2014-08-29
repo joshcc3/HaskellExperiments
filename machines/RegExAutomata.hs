@@ -4,7 +4,7 @@ module RegExAutomata where
 
 import Prelude hiding (either, (*))
 import Control.Applicative hiding ((<|>))
-import Data.Monoid 
+import Data.Monoid hiding (Last, getLast)
 import qualified Control.Category as C
 import Control.Arrow hiding ((|||))
 import qualified Data.Machine as M
@@ -24,8 +24,6 @@ instance Monoid (List a) where
     mappend l Nil  = l
     mappend (C a l) l' = C a $ mappend l l'
     
-
-
     
 iso' :: List a ->[a]
 iso' Nil = []
@@ -44,7 +42,7 @@ instance Show b => Show (St b) where
     show (L (R ())) = "Not Accepting"
     show (R b) = "Accepting " ++ show b
 
-hom = (fmap . fmap) iso . fmap iso . iso
+hom = (fmap . fmap) iso . fmap iso . iso . fmap Last
 
 -- fmap f . fmap g = fmap (f . g)
 -- fmap (f . g) = fmap f . fmap g
@@ -58,7 +56,7 @@ hom = (fmap . fmap) iso . fmap iso . iso
 -- hom = iso/(iso - fmap)
 -- negative and fractional types?
 
-hom' = iso . fmap iso . (fmap . fmap) iso
+hom' = fmap getLast . iso . fmap iso . (fmap . fmap) iso
 
 stIso :: E (E (E () ()) ()) b -> Either (Either (Either () ()) ()) b
 stIso = (B.first . B.first) isoE . B.first isoE . isoE
@@ -88,6 +86,7 @@ match c b = M.Mealy $ \a -> if a == c then (acc b, pure $ acc b) else (err, pure
       machine =    (dropMealy 1 n >>> (C.id ||| m')) *** arr R 
                 >>> arr ( uncurry (flip (<>)))
 
+                
 dropMealy :: Int -> d -> M.Mealy a (Either d a)
 dropMealy n d = M.unfoldMealy (\s a -> if s > 0 then (Left d, s - 1) else (Right a, s)) n
 
@@ -98,25 +97,27 @@ dropMealy n d = M.unfoldMealy (\s a -> if s > 0 then (Left d, s - 1) else (Right
       g = fmap hom
       h = fmap hom'
 
+      
 (*) :: Monoid b => M.Mealy a (St b) -> M.Mealy a (St b)
 (*) m = m <|> (m <.> (*)m)
-
-
 
 
 instance Monoid b => Monoid (M.Mealy a b) where
     mempty = pure mempty
     mappend = liftA2 mappend
 
-
+    
 toRegEx :: (Eq a, Monoid b) => [(a, b)] -> M.Mealy a (St b)
 toRegEx = foldl1 (<.>) . map (uncurry match) 
+
 
 tag :: [b] -> [(b, List b)]
 tag = map $ (fmap (flip C Nil) . join (,))
 
+
 tag' :: Monoid b => [a] -> b -> [(a, b)]
 tag' l b = map (,mempty) (init l) ++ [(last l, b)]
+
 
 ifR = toRegEx $ tag' "if" (C IF Nil)
 forR = toRegEx $ tag' "for" (C FOR Nil)
