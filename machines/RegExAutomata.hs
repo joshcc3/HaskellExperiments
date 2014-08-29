@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, RankNTypes, ScopedTypeVariables, OverlappingInstances, DeriveFunctor, GADTs, PolyKinds #-}
+{-# LANGUAGE TypeSynonymInstances, TupleSections, FlexibleInstances, ScopedTypeVariables, OverlappingInstances, DeriveFunctor #-}
 
 module RegExAutomata where
 
@@ -14,14 +14,9 @@ import Mon
 import Data.Sequence
 import qualified Data.Bifunctor as B
 
-data Tok = IF | FOR | OPEN_P | CLOSE_P | INT_LIT Int | SEMI_COLON | VAR Char | EQUALS
+data Tok = IF | FOR | OPEN_P | CLOSE_P | INT_LIT Int | SEMI_COLON | VAR Char | EQUALS | SPC deriving (Eq, Ord, Show)
 
 data List a = Nil | C a (List a) deriving (Eq, Ord, Show, Functor)
-
-{-
-
-
--}
 
 instance Monoid (List a) where
     mempty = Nil
@@ -30,6 +25,8 @@ instance Monoid (List a) where
     mappend (C a l) l' = C a $ mappend l l'
     
 
+
+    
 iso' :: List a ->[a]
 iso' Nil = []
 iso' (C a l) = a : iso' l
@@ -59,6 +56,7 @@ hom = (fmap . fmap) iso . fmap iso . iso
 -- (1 - y)*x = 1
 -- x = 1/(1 - y) 
 -- hom = iso/(iso - fmap)
+-- negative and fractional types?
 
 hom' = iso . fmap iso . (fmap . fmap) iso
 
@@ -80,25 +78,20 @@ dot b = M.Mealy $ \a -> (acc (C b Nil), pure (acc (C b Nil)))
 
 match :: (Eq a, Monoid b) => a -> b -> M.Mealy a (St b)
 match c b = M.Mealy $ \a -> if a == c then (acc b, pure $ acc b) else (err, pure err)
--- (base <.> (h (g base <> g base))
+
 (<.>) :: Monoid b => forall a. M.Mealy a (St b) -> M.Mealy a (St b) -> M.Mealy a (St b)
 (<.>) m m' =     C.id &&& (m >>> arr isoE) 
              >>> arr distributes 
              >>> arr (L . snd) ||| machine
     where 
 --      machine :: M.Mealy (a, b) (St b)
-      machine =    (dropMealy 1 mempty >>> (C.id ||| m')) *** arr R 
-                >>> arr (uncurry (<>))
+      machine =    (dropMealy 1 n >>> (C.id ||| m')) *** arr R 
+                >>> arr ( uncurry (flip (<>)))
 
 dropMealy :: Int -> d -> M.Mealy a (Either d a)
 dropMealy n d = M.unfoldMealy (\s a -> if s > 0 then (Left d, s - 1) else (Right a, s)) n
 
-{-
-{-
-Right so we need to redefine <.> (*) and <+> (+) so that <.> distributes over <+>.
-We need to redefine the plus.
-So the answer should be expressed as the result of logging the machine. 
--}
+
 (<|>) :: Monoid b => M.Mealy a (St b) -> M.Mealy a (St b) -> M.Mealy a (St b)
 (<|>) m m' =  h $ g m <> g m'
     where 
@@ -106,29 +99,11 @@ So the answer should be expressed as the result of logging the machine.
       h = fmap hom'
 
 (*) :: Monoid b => M.Mealy a (St b) -> M.Mealy a (St b)
-(*) m = m <> (m <.> (*)m)
---(*) m = fmap hom' (fmap hom m <> fmap hom (m <.> (*)m))
+(*) m = m <|> (m <.> (*)m)
 
 
-{-
 
-(<.>) :: (Monoid b) => forall a. Moore a (St b) -> Moore a (St b) -> Moore a (St b)
-m <.> m' = m >>= f
-    where
-        f = g . either (either errorHandler nHandler) acceptHandler
-        errorHandler _ = pure err <> m'
-        acceptHandler b = pure (acc b) <> m'
-        nHandler _ = pure n <> Moore mempty (const m')
-        g :: E (E (Moore a b) (Moore a b)) (Moore a b) -> Moore a b
-        g (R x) = x
-        g (L (L x)) = x
-        g (L (R x)) = x
 
-match :: (Eq a, Monoid b) => a -> b -> Moore a (St b) 
-match c b = Moore n $ \c' -> if c == c' then pure $ acc b else pure err 
-
--}
--}
 instance Monoid b => Monoid (M.Mealy a b) where
     mempty = pure mempty
     mappend = liftA2 mappend
@@ -140,12 +115,14 @@ toRegEx = foldl1 (<.>) . map (uncurry match)
 tag :: [b] -> [(b, List b)]
 tag = map $ (fmap (flip C Nil) . join (,))
 
+tag' :: Monoid b => [a] -> b -> [(a, b)]
+tag' l b = map (,mempty) (init l) ++ [(last l, b)]
 
-ifR = toRegEx $ tag "if"
-forR = toRegEx $ tag "for"
-openP = toRegEx $ tag "("
-closeP = toRegEx $ tag ")"
-spc = toRegEx $ tag " "
+ifR = toRegEx $ tag' "if" (C IF Nil)
+forR = toRegEx $ tag' "for" (C FOR Nil)
+openP = toRegEx $ tag' "(" (C OPEN_P Nil)
+closeP = toRegEx $ tag' ")" (C CLOSE_P Nil)
+spc = toRegEx $ tag' " " (C SPC Nil)
 
 
 run :: M.Mealy a1 a -> [a1] -> a1 -> a
