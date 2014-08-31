@@ -45,9 +45,10 @@ instance Bifunctor E where
 instance Functor (E a) where
     fmap f (L a )  = L a
     fmap f (R b) = R $ f b
-
+{-
 instance (S.Semigroup a, S.Semigroup b) => S.Semigroup (E a b) where
     (<>) = undefined
+-}
     
 instance S.Semigroup a => Applicative (E a) where
     pure x = R x
@@ -99,3 +100,9 @@ instance Applicative Identity where
 instance (Applicative f, Monoid a) => Monoid (f a) where
     mempty = pure mempty
     mappend = liftA2 mappend
+
+instance (S.Semigroup a, S.Semigroup b) => S.Semigroup (E a b) where
+    (<>) (L x) (L y) = L $ x S.<> y
+    (<>) (R x) (R y) = R $ x S.<> y
+    (<>) (L x) _ = L x
+    (<>) _ (L x) = L x

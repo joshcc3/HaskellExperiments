@@ -86,7 +86,6 @@ conc m m' =     C.id &&& (m >>> arr isoE)
       machine =    (dropMealy 1 n >>> (C.id ||| m')) *** arr R 
                 >>> arr ( uncurry (flip (<>)))
 
-                
 dropMealy :: Int -> d -> M.Mealy a (Either d a)
 dropMealy n d = M.unfoldMealy (\s a -> if s > 0 then (Left d, s - 1) else (Right a, s)) n
 
@@ -118,10 +117,8 @@ toRegEx = foldl1 (<.>) . map ((:[]) . uncurry match)
 tag :: [b] -> [(b, List b)]
 tag = map $ (fmap (flip C Nil) . join (,))
 
-
 tag' :: Monoid b => [a] -> b -> [(a, b)]
 tag' l b = map (,mempty) (init l) ++ [(last l, b)]
-
 
 ifR = toRegEx $ tag' "if" (C IF Nil)
 forR = toRegEx $ tag' "for" (C FOR Nil)
@@ -130,6 +127,6 @@ closeP = toRegEx $ tag' ")" (C CLOSE_P Nil)
 spc = toRegEx $ tag' " " (C SPC Nil)
 
 
-run :: M.Mealy a1 a -> [a1] -> a1 -> a
-run m [] final = fst $ M.runMealy m final
-run m (l:ls) final = run (snd $ M.runMealy m l) ls final
+forward :: M.Mealy a1 a -> [a1] -> a1 -> (a, M.Mealy a1 a)
+forward m [] final = M.runMealy m final
+forward m (l:ls) final = forward (snd $ M.runMealy m l) ls final

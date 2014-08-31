@@ -8,7 +8,7 @@ import Control.Arrow
 
 main = do
     s <- getLine
-    if length s == 0 then print "Must be at least 1" >> main else print $ fmap (iso') $ run (collapse regex) (init s) (last s)
+    if length s == 0 then print "Must be at least 1" >> main else print $ fmap (iso') $ fst $forward (collapse regex) (init s) (last s)
 
 f ^ 0 = id
 f ^ n = f . (f ^ (n - 1))
