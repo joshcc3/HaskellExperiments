@@ -77,8 +77,8 @@ dot b = M.Mealy $ \a -> (acc (C b Nil), pure (acc (C b Nil)))
 match :: (Eq a, Monoid b) => a -> b -> M.Mealy a (St b)
 match c b = M.Mealy $ \a -> if a == c then (acc b, pure $ acc b) else (err, pure err)
 
-(<.>) :: Monoid b => forall a. M.Mealy a (St b) -> M.Mealy a (St b) -> M.Mealy a (St b)
-(<.>) m m' =     C.id &&& (m >>> arr isoE) 
+conc :: Monoid b => forall a. M.Mealy a (St b) -> M.Mealy a (St b) -> M.Mealy a (St b)
+conc m m' =     C.id &&& (m >>> arr isoE) 
              >>> arr distributes 
              >>> arr (L . snd) ||| machine
     where 
@@ -90,15 +90,19 @@ match c b = M.Mealy $ \a -> if a == c then (acc b, pure $ acc b) else (err, pure
 dropMealy :: Int -> d -> M.Mealy a (Either d a)
 dropMealy n d = M.unfoldMealy (\s a -> if s > 0 then (Left d, s - 1) else (Right a, s)) n
 
+(<.>) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)] -> [M.Mealy a (St b)]
+(<.>) m m' = m >>= flip map m' . conc
+-- (<.>) = flip (>>=) (flip (.) conc . flip map)
 
-(<|>) :: Monoid b => M.Mealy a (St b) -> M.Mealy a (St b) -> M.Mealy a (St b)
-(<|>) m m' =  h $ g m <> g m'
-    where 
-      g = fmap hom
-      h = fmap hom'
 
-      
-(*) :: Monoid b => M.Mealy a (St b) -> M.Mealy a (St b)
+(<|>) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)] -> [M.Mealy a (St b)]
+(<|>) = (++)
+
+collapse :: [M.Mealy a (St b)] -> M.Mealy a (St b)
+collapse l = fmap hom' $ mconcat $ (map . fmap) hom l
+
+
+(*) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)]
 (*) m = m <|> (m <.> (*)m)
 
 
@@ -107,8 +111,8 @@ instance Monoid b => Monoid (M.Mealy a b) where
     mappend = liftA2 mappend
 
     
-toRegEx :: (Eq a, Monoid b) => [(a, b)] -> M.Mealy a (St b)
-toRegEx = foldl1 (<.>) . map (uncurry match) 
+toRegEx :: (Eq a, Monoid b) => [(a, b)] -> [M.Mealy a (St b)]
+toRegEx = foldl1 (<.>) . map ((:[]) . uncurry match) 
 
 
 tag :: [b] -> [(b, List b)]

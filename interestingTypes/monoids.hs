@@ -82,3 +82,9 @@ st3 = Identity $ e
 
 main = do
     print $ getId $ st2 <> st3
+
+{-
+f (g a) == g (f a)
+where g :: * -> *, f :: * -> *
+commutative endofunctos, commutative monads
+-}
