@@ -2,6 +2,7 @@
 
 module RegExAutomata where
 
+import Data.List
 import Prelude hiding (either, (*))
 import Control.Applicative hiding ((<|>))
 import Data.Monoid hiding (Last, getLast)
@@ -72,7 +73,7 @@ err :: St a
 err = L $ L $ R ()
 nothing = L (L (L ()))
 
-dot b = M.Mealy $ \a -> (acc (C b Nil), pure (acc (C b Nil)))
+dot = M.Mealy $ \a -> (acc $ C a Nil, dot)
 
 match :: (Eq a, Monoid b) => a -> b -> M.Mealy a (St b)
 match c b = M.Mealy $ \a -> if a == c then (acc b, pure $ acc b) else (err, pure err)
@@ -83,16 +84,42 @@ conc m m' =     C.id &&& (m >>> arr isoE)
              >>> arr (L . snd) ||| machine
     where 
 --      machine :: M.Mealy (a, b) (St b)
-      machine =    (dropMealy 1 n >>> (C.id ||| m')) *** arr R 
+      machine = (dropMealy 1 n >>> (C.id ||| m')) *** arr R 
                 >>> arr ( uncurry (flip (<>)))
 
 dropMealy :: Int -> d -> M.Mealy a (Either d a)
 dropMealy n d = M.unfoldMealy (\s a -> if s > 0 then (Left d, s - 1) else (Right a, s)) n
 
-(<.>) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)] -> [M.Mealy a (St b)]
-(<.>) m m' = m >>= flip map m' . conc
--- (<.>) = flip (>>=) (flip (.) conc . flip map)
+-- [match "c" (C 'c' Nil)] 
 
+-- [r] <.> [r] <.> [r] ... 
+-- conc r (conc r (conc r ...
+-- [r, r'] <.> [r'']
+-- [conc r r'', conc r r']
+-- [r] <.> [r', r'', r''']
+
+(<.>) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)] -> [M.Mealy a (St b)]
+(<.>) m m' = map g m
+    where 
+      g r =     C.id &&& (m >>> arr isoE) 
+             >>> arr distributes 
+             >>> arr (L . snd) ||| machine
+    where 
+--      machine :: M.Mealy (a, b) (St b)
+      machine = (dropMealy 1 n >>> (C.id ||| m')) *** arr R 
+                >>> arr ( uncurry (flip (<>)))
+
+-- Case of foldr -- cant define what to map over
+-- [r] <.> ([r] <.> ([r] <.> ...
+-- map (conc r) ([r] <.> ([r] <.> ...
+-- map (conc r) (map (conc r) ([r] <.> ...
+-- Case of foldl -- builds infinite stack of conc
+-- (([r] <.> [r]) <.> [r]) ...
+-- ((map (conc r) [r]) <.> [r]) ...
+-- ([conc r r] <.> [r]) <.> [r] ...
+-- (map (conc (conc r r)) [r]) <.> [r]
+-- ([conc (conc r r) r] <.> [r]) <.> [r] ...
+-- use foldl1' to prevent stack overflowing
 
 (<|>) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)] -> [M.Mealy a (St b)]
 (<|>) = (++)
@@ -100,10 +127,15 @@ dropMealy n d = M.unfoldMealy (\s a -> if s > 0 then (Left d, s - 1) else (Right
 collapse :: [M.Mealy a (St b)] -> M.Mealy a (St b)
 collapse l = fmap hom' $ mconcat $ (map . fmap) hom l
 
+instance Show (M.Mealy a b) where
+    show x = "Mealy"
 
 (*) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)]
-(*) m = m <|> (m <.> (*)m)
+(*) m = (m <.> m) <.> (*)m
 
+-- (*) ifR = ifR >>= map (m <|> (m <.> (m <|> m))) conc
+-- (*) ifR = ifR >>= ifRap (ifR ++ (ifR >>= ifRap (ifR ++ ifR) conc)) conc
+-- 
 
 instance Monoid b => Monoid (M.Mealy a b) where
     mempty = pure mempty
@@ -111,7 +143,7 @@ instance Monoid b => Monoid (M.Mealy a b) where
 
     
 toRegEx :: (Eq a, Monoid b) => [(a, b)] -> [M.Mealy a (St b)]
-toRegEx = foldl1 (<.>) . map ((:[]) . uncurry match) 
+toRegEx = foldl1' (<.>) . map ((:[]) . uncurry match) 
 
 
 tag :: [b] -> [(b, List b)]

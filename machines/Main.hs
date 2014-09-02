@@ -1,29 +1,31 @@
+{-# LANGUAGE RankNTypes, ExistentialQuantification #-}
+
 module Main where
 
-import Prelude hiding (Either(..), either, (*), (^))
-import RegExAutomata
-import Control.Applicative hiding ((<|>))
-import Data.Monoid 
-import Control.Arrow
+import Parse
+
+data Token = Digit Int | IF | OPEN_P | CLOSE_P | VAR String
+
+ifR = token "if" IF
+openp = char '(' OPEN_P
+closep = char ')' CLOSE_P
+ident = (|*|) alphaNum
+
+main = do
+  print "Enter string"
+  s <- getLine
+  print "Enter last"
+  final <- getLine
+  print $ fst $ fastForward ident s (head final)
+
+  
+
+{-
+
+regex = (|*|) dig <:> char ' ' 
 
 main = do
     s <- getLine
-    if length s == 0 then print "Must be at least 1" >> main else print $ fmap (iso') $ fst $forward (collapse regex) (init s) (last s)
+    return ()
 
-f ^ 0 = id
-f ^ n = f . (f ^ (n - 1))
-
-regex =  (base <|> (base <.> base)) <.> (base <|> (base<.> base))
--- (f base ^ 10) base
-    where 
-      base = ifR <.> spc
-
-
-
--- m <> (m <.> (m <> (m <.> m)))
--- m <> (m <.> m <> m <.> m <.> m)
--- m <> m <.> m <> m <.> m <.> m ... 
-
-
-
---(*) m =  fmap hom' (fmap hom m <> fmap hom (m <.> (*)m))
+-}

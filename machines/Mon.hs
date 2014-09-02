@@ -106,3 +106,11 @@ instance (S.Semigroup a, S.Semigroup b) => S.Semigroup (E a b) where
     (<>) (R x) (R y) = R $ x S.<> y
     (<>) (L x) _ = L x
     (<>) _ (L x) = L x
+
+
+
+expDistributes :: Arrow a => [a b c] -> a b [c]
+expDistributes l = foldr g (arr $const []) l
+    where 
+      g a a' = a &&& a' >>> arr (uncurry (:) )
+
