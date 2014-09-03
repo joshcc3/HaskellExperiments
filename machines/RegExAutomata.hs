@@ -90,7 +90,8 @@ dropMealy :: Int -> d -> M.Mealy a (Either d a)
 dropMealy n d = M.unfoldMealy (\s a -> if s > 0 then (Left d, s - 1) else (Right a, s)) n
 
 (<.>) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)] -> [M.Mealy a (St b)]
-(<.>) m m' = m >>= flip map m' . conc
+(<.>) m m' = m >>= (flip map m' . conc)
+  
 -- (<.>) = flip (>>=) (flip (.) conc . flip map)
 
 

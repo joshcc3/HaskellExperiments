@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, PolyKinds, GADTs #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
 module Mon where
 
@@ -38,6 +38,17 @@ distributes' ::  Either (a, b) (a, c)-> (a, Either b c)
 distributes' (Left (a, x)) = (a, Left x)
 distributes' (Right (a, x)) = (a, Right x)
 
+
+--expDistributes :: (Arrow a, Functor (a b)) => a b [c] -> [a b c]
+expDistributes :: Functor f => f [b] -> [f b]
+expDistributes a = fmap head a : expDistributes (fmap tail a)
+
+expDistributes' :: Arrow a => [a b c] -> a b [c]
+expDistributes' = foldr f (arr $ const []) 
+    where 
+--      f :: a b c -> a b [c] -> a b [c]
+      f a a' = a &&& a' >>> arr (uncurry (:))
+
 instance Bifunctor E where
     bimap l r (L x) = L $ l x
     bimap l r (R x) = R $ r x
@@ -62,13 +73,10 @@ iso :: E a b -> E b a
 iso (L x) = R x
 iso (R x) = L x
 
-
-
 either :: (a -> b) -> (c -> d) -> E a c -> E b d
 either f _ (L a) = L $ f a
 either _ g (R b) = R $ g b
 
-    
 newtype Compose f g a = Compose { unwrap :: f (g a) }
 newtype Prod f g a = Prod { getProd :: (f a, g a) }
 
@@ -96,7 +104,6 @@ instance Applicative Identity where
     pure x = Identity x
     (Identity f) <*> (Identity a) = Identity $ f a
 
-
 instance (Applicative f, Monoid a) => Monoid (f a) where
     mempty = pure mempty
     mappend = liftA2 mappend
@@ -106,3 +113,4 @@ instance (S.Semigroup a, S.Semigroup b) => S.Semigroup (E a b) where
     (<>) (R x) (R y) = R $ x S.<> y
     (<>) (L x) _ = L x
     (<>) _ (L x) = L x
+
