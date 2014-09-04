@@ -39,6 +39,8 @@ distributes' (Left (a, x)) = (a, Left x)
 distributes' (Right (a, x)) = (a, Right x)
 
 
+
+
 --expDistributes :: (Arrow a, Functor (a b)) => a b [c] -> [a b c]
 expDistributes :: Functor f => f [b] -> [f b]
 expDistributes a = fmap head a : expDistributes (fmap tail a)

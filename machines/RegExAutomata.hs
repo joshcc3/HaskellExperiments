@@ -2,6 +2,8 @@
 
 module RegExAutomata where
 
+import qualified Data.Foldable as F
+import Vec
 import Prelude hiding (either, (*))
 import Control.Applicative hiding ((<|>))
 import Data.Monoid hiding (Last, getLast)
