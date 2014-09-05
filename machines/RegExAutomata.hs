@@ -126,6 +126,7 @@ closeP = toRegEx $ tag' ")" (C CLOSE_P Nil)
 spc = toRegEx $ tag' " " (C SPC Nil)
 
 
-run :: M.Mealy a1 a -> [a1] -> a1 -> a
-run m [] final = fst $ M.runMealy m final
-run m (l:ls) final = run (snd $ M.runMealy m l) ls final
+forward :: M.Mealy a b -> [a] -> a -> (b, M.Mealy a b)
+forward m [] f = M.runMealy m f
+forward m (l:ls) f = forward (snd $ M.runMealy m l) ls f
+
