@@ -1,22 +1,21 @@
-{-# LANGUAGE RankNTypes, ExistentialQuantification #-}
-
 module Main where
 
 import Parse
 
-data Token = Digit Int | IF | OPEN_P | CLOSE_P | VAR String
+data Token = Digit Int | IF | OPEN_P | CLOSE_P | VAR String | SPC deriving (Eq, Ord, Show)
 
 ifR = token "if" IF
 openp = char '(' OPEN_P
 closep = char ')' CLOSE_P
-ident = (|*|) alphaNum
+spc = char ' ' SPC
+regex = openp <:> spc <:> closep 
 
 main = do
   print "Enter string"
   s <- getLine
   print "Enter last"
   final <- getLine
-  print $ fst $ fastForward ident s (head final)
+  print $ fst $ fastForward regex s (head final)
 
   
 

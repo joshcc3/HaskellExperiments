@@ -99,15 +99,7 @@ dropMealy n d = M.unfoldMealy (\s a -> if s > 0 then (Left d, s - 1) else (Right
 -- [r] <.> [r', r'', r''']
 
 (<.>) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)] -> [M.Mealy a (St b)]
-(<.>) m m' = map g m
-    where 
-      g r =     C.id &&& (m >>> arr isoE) 
-             >>> arr distributes 
-             >>> arr (L . snd) ||| machine
-    where 
---      machine :: M.Mealy (a, b) (St b)
-      machine = (dropMealy 1 n >>> (C.id ||| m')) *** arr R 
-                >>> arr ( uncurry (flip (<>)))
+(<.>) m m' = m >>= (flip map m' . conc)
 
 -- Case of foldr -- cant define what to map over
 -- [r] <.> ([r] <.> ([r] <.> ...
