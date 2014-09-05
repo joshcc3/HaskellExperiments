@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, TupleSections, FlexibleInstances, ScopedTypeVariables, OverlappingInstances, DeriveFunctor #-}
+{-# LANGUAGE TypeSynonymInstances, TupleSections, FlexibleInstances, ScopedTypeVariables, OverlappingInstances, DeriveFunctor, DataKinds #-}
 
 module RegExAutomata where
 
@@ -91,20 +91,34 @@ conc m m' =     C.id &&& (m >>> arr isoE)
 dropMealy :: Int -> d -> M.Mealy a (Either d a)
 dropMealy n d = M.unfoldMealy (\s a -> if s > 0 then (Left d, s - 1) else (Right a, s)) n
 
-(<.>) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)] -> [M.Mealy a (St b)]
-(<.>) m m' = m >>= (flip map m' . conc)
+(<.>) :: Monoid b => Vec (S n) (M.Mealy a (St b)) -> Vec (S n') (M.Mealy a (St b)) -> Vec (Mul (S n) (S n')) (M.Mealy a (St b))
+(<.>) m m' = cMap m f --(flip fmap m' . conc)
+    where 
+      f :: M.Mealy a (St b) -> Vec (S n') (M.Mealy a (St b))
+      f r = distr' g
+          where 
+            g :: M.Mealy a (Vec (S n') b)
+            g = C.id &&& (r >>> arr isoE)
+                >>> arr distributes
+                >>> m ||| n
+                    where 
+                      m :: M.Mealy (a, b) (Vec (S n') b)
+                      m = arr $ \(_, b) -> 
+
+
+
+--(<.>) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)] -> [M.Mealy a (St b)]
+--(<.>) m m' = m >>= (flip map m' . conc)
   
 -- (<.>) = flip (>>=) (flip (.) conc . flip map)
 
-
-(<|>) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)] -> [M.Mealy a (St b)]
-(<|>) = (++)
-
-collapse :: [M.Mealy a (St b)] -> M.Mealy a (St b)
-collapse l = fmap hom' $ mconcat $ (map . fmap) hom l
+(<|>) = append
 
 
-(*) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)]
+collapse :: Vec (S n) (M.Mealy a (St b)) -> M.Mealy a (St b)
+collapse l = fmap hom' $ F.fold $ (fmap . fmap) hom l
+
+
 (*) m = m <|> (m <.> (*)m)
 
 
@@ -113,8 +127,9 @@ instance Monoid b => Monoid (M.Mealy a b) where
     mappend = liftA2 mappend
 
     
-toRegEx :: (Eq a, Monoid b) => [(a, b)] -> [M.Mealy a (St b)]
-toRegEx = foldl1 (<.>) . map ((:[]) . uncurry match) 
+toRegEx
+  :: [(Char, List Tok)] -> Vec (S 'Z) (M.Mealy Char (St (List Tok)))
+toRegEx = foldl1 (<.>) . map ((flip Cons Empty) . uncurry match) 
 
 
 tag :: [b] -> [(b, List b)]

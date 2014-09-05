@@ -38,19 +38,6 @@ distributes' ::  Either (a, b) (a, c)-> (a, Either b c)
 distributes' (Left (a, x)) = (a, Left x)
 distributes' (Right (a, x)) = (a, Right x)
 
-
-
-
---expDistributes :: (Arrow a, Functor (a b)) => a b [c] -> [a b c]
-expDistributes :: Functor f => f [b] -> [f b]
-expDistributes a = fmap head a : expDistributes (fmap tail a)
-
-expDistributes' :: Arrow a => [a b c] -> a b [c]
-expDistributes' = foldr f (arr $ const []) 
-    where 
---      f :: a b c -> a b [c] -> a b [c]
-      f a a' = a &&& a' >>> arr (uncurry (:))
-
 instance Bifunctor E where
     bimap l r (L x) = L $ l x
     bimap l r (R x) = R $ r x

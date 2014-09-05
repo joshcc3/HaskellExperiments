@@ -1,36 +1,47 @@
-{-# LANGUAGE DataKinds, GADTs, KindSignatures, TypeFamilies #-}
-module InterestingTypes.Vec where
-
+{-# LANGUAGE DataKinds, PolyKinds, UndecidableInstances, GADTs, KindSignatures, TypeFamilies #-}
+  
 import Data.Foldable
 import Control.Applicative
 import Data.Monoid
 
+data S n = S n
+data Z = Z
 
-data Nat = S Nat | Z 
+--Add x (Add y z) ~ Add (Add x y) z
 
-data Vec :: Nat -> * -> * where
-  Cons :: a -> Vec n a -> Vec (S n) a
-  Nil :: Vec Z a
+{-
+so what we want to do is prove that (Add x (Add y z)) has the same type as (Add (Add x y) z)
+The only inhabitant of the same type is Refl.
+-}
 
-head :: Vec (S n ) a -> a
-head (Cons x _) = x
+data Iso a b where
+    Refl :: Iso a a
 
-tail :: Vec (S n) a -> Vec n a
-tail (Cons _ t) = t
+sym :: Iso a b -> Iso b a
+sym Refl = Refl
 
-type family Add (a :: Nat) (b :: Nat) :: Nat
+
+class Assoc x where
+    assoc :: x -> y -> z ->  Iso (Add x (Add y z)) (Add (Add x y) z)
+
+instance Assoc Z where
+    assoc Z _ _ = Refl
+
+
+instance Assoc n => Assoc (S n) where
+--    assoc :: Iso (Add (S n) (Add y z)) (Add (Add (S n) y) z)
+    assoc (S n) y z = cong $ assoc n y z
+
+
+cong :: Iso a b -> Iso (S a) (S b)
+cong Refl = Refl
+
+
+type family Add a b
 type instance Add Z n = n
 type instance Add (S n) n' = S (Add n n')
 
-append :: Vec n a -> Vec n' a -> Vec (Add n n') a
-append Nil x = x
-append (Cons a t) v = Cons a (append t v)
-
-instance Foldable (Vec n) where
-    fold Nil = mempty
-    fold (Cons x t) = mappend x (fold t)
-
-instance Functor (Vec n) where
-    fmap f (Cons x t) = Cons (f x) (fmap f t)
-    fmap f Nil = Nil
+--type family Mul a b
+--type instance Mul Z n = Z
+--type instance Mul (S n) n' = Add n' (Mul n n')
 
