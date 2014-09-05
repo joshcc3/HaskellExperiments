@@ -45,6 +45,7 @@ cMap :: Vec n a -> (a -> Vec n' b) -> Vec (Mul n n') b
 cMap Empty _ = Empty
 cMap (Cons a t) f = append (f a) (cMap t f)
 
+
 instance Foldable (Vec n) where
     fold Empty = mempty
     fold (Cons x t) = mappend x (fold t)

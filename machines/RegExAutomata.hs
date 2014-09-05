@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, TupleSections, FlexibleInstances, ScopedTypeVariables, OverlappingInstances, DeriveFunctor, DataKinds #-}
+{-# LANGUAGE TypeSynonymInstances, TupleSections, FlexibleInstances, ScopedTypeVariables, OverlappingInstances, DeriveFunctor, DataKinds, FlexibleContexts #-}
 
 module RegExAutomata where
 
@@ -91,20 +91,28 @@ conc m m' =     C.id &&& (m >>> arr isoE)
 dropMealy :: Int -> d -> M.Mealy a (Either d a)
 dropMealy n d = M.unfoldMealy (\s a -> if s > 0 then (Left d, s - 1) else (Right a, s)) n
 
-(<.>) :: Monoid b => Vec (S n) (M.Mealy a (St b)) -> Vec (S n') (M.Mealy a (St b)) -> Vec (Mul (S n) (S n')) (M.Mealy a (St b))
-(<.>) m m' = cMap m f --(flip fmap m' . conc)
+(<.>) :: (Monoid b, Distribute' n M.Mealy, Distribute' n' M.Mealy) => Vec (S n) (M.Mealy a (St b)) -> Vec (S n') (M.Mealy a (St b)) -> Vec (Mul (S n) (S n')) (M.Mealy a (St b))
+(<.>) m m' = cMap m f -- (flip fmap m' . conc)
     where 
-      f :: M.Mealy a (St b) -> Vec (S n') (M.Mealy a (St b))
+--      f :: M.Mealy a (St b) -> Vec (S n') (M.Mealy a (St b))
       f r = distr' g
           where 
-            g :: M.Mealy a (Vec (S n') b)
+--            g :: M.Mealy a (Vec (S n') b)
             g = C.id &&& (r >>> arr isoE)
                 >>> arr distributes
-                >>> m ||| n
+                >>> h ||| x
                     where 
-                      m :: M.Mealy (a, b) (Vec (S n') b)
-                      m = arr $ \(_, b) -> 
+--                      h :: M.Mealy (a, b) (Vec (S n') b)
+                      h = arr $ \(_, b) -> fmap (const(L b)) m'
+--                      x :: M.Mealy (a, b) (Vec (S n') (St b))
+                      x = (dropMealy 1 (fmap (const n) m') >>> (C.id ||| (distr m'))) *** arr R
+                          >>> z
+--                      z :: M.Mealy (Vec (S n') (St b), St b) (Vec (S n') (St b))
+                      z = arr $ \(v, s) -> fmap (s <>) v
 
+
+--       machine =    (dropMealy 1 n >>> (C.id ||| m')) *** arr R 
+--                >>> arr ( uncurry (flip (<>)))
 
 
 --(<.>) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)] -> [M.Mealy a (St b)]
@@ -148,3 +156,4 @@ spc = toRegEx $ tag' " " (C SPC Nil)
 forward :: M.Mealy a1 a -> [a1] -> a1 -> (a, M.Mealy a1 a)
 forward m [] final = M.runMealy m final
 forward m (l:ls) final = forward (snd $ M.runMealy m l) ls final
+
