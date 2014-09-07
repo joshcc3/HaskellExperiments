@@ -4,3 +4,21 @@ Also denotational semantics seem to be the dual of operational semantics or is t
 
 Also lensing into a stream of eithers forms a geometric series, what is the relationship to the geometric series on natural numbers.
 -}
+
+
+data Tree b = Branch b [Tree b]
+
+{-
+list(a) = 1 + a*list(a)
+list(a) = 1/(1 - a)
+tree(a) = a*list(tree(a))
+tree(a) = a*(1/(1-tree(a)))
+tree(a)(1 - tree(a)) = a
+tree(a) - tree^2(a) = a
+tree(a) = a + tree^2(a)
+-}
+
+data TreeF a n = Leaf a | BranchF n n
+
+-- degrees of freedom much like in equations. All the theory applicable on numbers should
+-- then apply such as integration, numerical analysis and all other such nonsense.
