@@ -3,7 +3,8 @@
 
 module Iso where
 
-import Mon
+import Mon (E(..))
+import RegExAutomata (List(..))
 
 class Iso a b where
     iso :: a -> b
