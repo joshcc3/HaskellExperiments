@@ -1,21 +1,81 @@
 {-# LANGUAGE  ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators  #-}
+{-# LANGUAGE TypeFamilies  #-}
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE  MultiParamTypeClasses #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE  DataKinds #-}
+{-# LANGUAGE  GADTs #-}
 --{-# LANGUAGE  #-}
 
 import Prelude hiding ((+), (*))
+import qualified Data.Foldable as F
 import Control.Arrow 
 import Data.Fix
 import Control.Monad.Cont
-import Mon
+import Machines.Mon
 import Data.Monoid
-import RegExAutomata hiding (match)
+import Machines.RegExAutomata hiding (match, (<|>), (<.>))
 import Control.Monad
+import Machines.Vec
+import Machines.Prelude.Types
 
-data MyList a = a :- MyList a | Null
+{-
+We want to create a structure with the following interface.
+
+<.> :: a -> a -> a
+<|> :: a -> a -> a
+fail :: a
+
+Laws:
+fail is the identity of <|>
+assoc of <.> and <|>
+fail <.> a = fail
+a <.> fail = fail
+distribtivity of <.> over <|>
+This is provided by the monad plus interface
+<.> = >>=
+<|> = mplus
+-}
+
+
+match :: (MonadPlus m, Eq a, Monoid b) => a -> b -> m (a -> b)
+match a b =  return (\a' -> if a == a' then b else mempty)
+
+--bindF :: (MonadPlus m, Monoid b) => m (a -> b) -> (a -> b) -> m (a -> a -> b)
+bindF m r = m >>= \r' -> return (\a a' -> r a <> r' a)
+
+--(<.>) :: (MonadPlus m, Monoid b) =>m (a -> b) -> m (a -> b) -> m (a -> a -> b)
+(<.>) r r' = r >>= bindF r'
+
+--(<|>) :: (MonadPlus m, Monoid b) => m (a -> b) -> m (a -> b) -> m (a -> b)
+(<|>) = mplus
+
+class RegExp (n :: Nat) where
+    toRegex :: (MonadPlus m, Monoid b, Eq a) => Vec(S  n) a -> b -> m (FunctorStream ((->) a) (S n) b)
+
+--instance RegExp Z where
+--    toRegex (Cons x _) b = match x b
+
+
+--Vec (S (S n)) a -> b -> m (a -> a -> n -> b)
+
+{-
+instance RegExp n => RegExp (S n) where
+    toRegex (Cons x v) b = a <.> b --undefined <.> undefined --toRegex v b
+        where 
+          a :: m (a -> b)
+          a = undefined
+          b = undefined
+-}
+--toRegex :: MonadPlus m => Vec n a -> b -> m (FunctorStream ((->) a) n b)
+--toRegex v b = undefined -- F.foldl1 (<.>) (fmap (flip match mempty) $ initV v) <.> match (lastV v) b
+
+--iff = toRegex (Cons 'i' $ Cons 'f' $ Cons 'f' Empty) (C "IF" Nil)
+
+
 
 {-
 So we can have two possible ways of doing this. 
@@ -34,28 +94,6 @@ thus decoupling the construction from the evaluation.
   The way this is traditionally implemented is by keeping a stack of states,
   pushing when you branch and popping when you fail.
 -}
-
-type Regex a b r =  (St b, [a]) -> Cont r (St b, [a])
-
-toReg b l = foldl1 conc $ map (match mempty) (init l) ++ [match b (last l)]
-
-type MStack = IO
-
-ifReg :: (St (List [Char]), [Char]) -> MStack (St (List String), String)
-ifReg = star $ toReg (C "IF" Nil) "if"
-
-match _ _ (c', []) = return (err, [])
-match b a (c', s) = return $ (if a == head s then( acc b <> c', tail s) else (err, tail s))
-
-conc :: Monad m => (a -> m b) -> (b -> m c) -> a -> m c
-conc = (>=>) 
-
-alter r r' = r''
-    where 
-      r'' inter@(b, s) = r inter >>= \(b', s') -> case b' of
-                                                    L (L x) -> r' inter
-                                                    z -> return (b', s')
-star r = r `alter` (r `conc` star r)
 
 {-
 Regular expressions machines will be coalgebras. 
@@ -96,3 +134,6 @@ So we have an observable state. And we can step the internals of the machine as 
 So we need to provide the stepping function a -> (St b, c)
 -}
 
+{-
+Monadplus interface apparently captures exactly what I'm trying to get
+-}

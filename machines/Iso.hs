@@ -1,10 +1,14 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 
 module Iso where
 
-import Mon (E(..))
-import RegExAutomata (List(..))
+import Machines.Mon (E(..))
+import Machines.RegExAutomata (List(..))
+import Machines.Vec 
 
 class Iso a b where
     iso :: a -> b
@@ -29,6 +33,15 @@ instance Iso (List a) [a] where
 
     iso' [] = Nil
     iso' (a : as) = C a (iso' as)
+
+
+class Hom a b where
+    to :: a -> b
+
+instance Hom (Vec Z a -> b) b where
+    to f = f Empty               
+
+
 
 {-
 

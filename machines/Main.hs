@@ -1,7 +1,7 @@
 module Main where
 
 import Prelude hiding (Either(..), either, (*), (^))
-import RegExAutomata
+import Machines.RegExAutomata
 import Control.Applicative hiding ((<|>))
 import Data.Monoid 
 import Control.Arrow

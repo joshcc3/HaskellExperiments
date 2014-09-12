@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, PolyKinds, GADTs #-}
 
-module Mon where
+module Machines.Mon where
 
 import Data.Bifunctor
 import Control.Applicative

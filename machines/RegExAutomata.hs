@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances, TupleSections, FlexibleInstances, ScopedTypeVariables, OverlappingInstances, DeriveFunctor #-}
 
-module RegExAutomata where
+module Machines.RegExAutomata where
 
 import Prelude hiding (either, (*))
 import Control.Applicative hiding ((<|>))
@@ -10,7 +10,7 @@ import Control.Arrow hiding ((|||))
 import qualified Data.Machine as M
 import Control.Arrow hiding (left, right)
 import Control.Monad
-import Mon
+import Machines.Mon
 import Data.Sequence
 import qualified Data.Bifunctor as B
 

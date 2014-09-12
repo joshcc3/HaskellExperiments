@@ -1,7 +1,7 @@
 module Parse (token, (<:>), (<||>), (|*|)) where
 
 import Prelude hiding ((*))
-import RegExAutomata
+import Machines.RegExAutomata
 import Control.Arrow
 import Data.Machine
 
