@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TypeOperators #-}
@@ -5,7 +6,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
---{-# LANGUAGE #-}
+{-# LANGUAGE Rank2Types #-}
 
 module Machines.Prelude.Types where
 
@@ -38,12 +39,14 @@ type family FunctorStream (f :: * -> *) (n :: Nat) a
 type instance FunctorStream f Z a = a
 type instance FunctorStream f (S n) a = f (FunctorStream f n a)
 
+type ReflectedNat n = forall a. Const a n
 
+class ToNum (n :: Nat) where
+    toNum :: Const a n -> Int
 
-{-
-instance PairStreamFunc Z a where
-    psf f b = f b
+instance ToNum Z where
+    toNum _ = 0
 
-instance PairStreamFunc (S n) a where
-    psf f b = 
--}
+instance ToNum n => ToNum (S n) where
+    toNum (Const x :: Const a (S n)) = 1 + toNum (Const x :: Const a n)
+
