@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, TupleSections, FlexibleInstances, ScopedTypeVariables, OverlappingInstances, DeriveFunctor, DataKinds, FlexibleContexts #-}
+{-# LANGUAGE TypeSynonymInstances, TupleSections, FlexibleInstances, ScopedTypeVariables, OverlappingInstances, DeriveFunctor, DataKinds, FlexibleContexts, NoMonomorphismRestriction #-}
 
 module RegExAutomata where
 
@@ -91,56 +91,25 @@ conc m m' =     C.id &&& (m >>> arr isoE)
 dropMealy :: Int -> d -> M.Mealy a (Either d a)
 dropMealy n d = M.unfoldMealy (\s a -> if s > 0 then (Left d, s - 1) else (Right a, s)) n
 
-(<.>) :: (Monoid b, Distribute' n M.Mealy, Distribute' n' M.Mealy) => Vec (S n) (M.Mealy a (St b)) -> Vec (S n') (M.Mealy a (St b)) -> Vec (Mul (S n) (S n')) (M.Mealy a (St b))
-(<.>) m m' = cMap m f -- (flip fmap m' . conc)
-    where 
---      f :: M.Mealy a (St b) -> Vec (S n') (M.Mealy a (St b))
-      f r = distr' g
-          where 
---            g :: M.Mealy a (Vec (S n') b)
-            g = C.id &&& (r >>> arr isoE)
-                >>> arr distributes
-                >>> h ||| x
-                    where 
---                      h :: M.Mealy (a, b) (Vec (S n') b)
-                      h = arr $ \(_, b) -> fmap (const(L b)) m'
---                      x :: M.Mealy (a, b) (Vec (S n') (St b))
-                      x = (dropMealy 1 (fmap (const n) m') >>> (C.id ||| (distr m'))) *** arr R
-                          >>> z
---                      z :: M.Mealy (Vec (S n') (St b), St b) (Vec (S n') (St b))
-                      z = arr $ \(v, s) -> fmap (s <>) v
+(<.>) m m' = m >>= (flip fmap m' . conc)
 
-
---       machine =    (dropMealy 1 n >>> (C.id ||| m')) *** arr R 
---                >>> arr ( uncurry (flip (<>)))
-
-
---(<.>) :: Monoid b => [M.Mealy a (St b)] -> [M.Mealy a (St b)] -> [M.Mealy a (St b)]
---(<.>) m m' = m >>= (flip map m' . conc)
-  
--- (<.>) = flip (>>=) (flip (.) conc . flip map)
-
-(<|>) = append
-
-
-collapse :: Vec (S n) (M.Mealy a (St b)) -> M.Mealy a (St b)
-collapse l = fmap hom' $ F.fold $ (fmap . fmap) hom l
-
-
-(*) m = m <|> (m <.> (*)m)
-
+(<|>) :: MonadPlus m => m (M.Mealy a b) -> m (M.Mealy a b) -> m (M.Mealy a b)
+(<|>) = mplus
 
 instance Monoid b => Monoid (M.Mealy a b) where
     mempty = pure mempty
     mappend = liftA2 mappend
 
-    
-toRegEx
-  :: [(Char, List Tok)] -> Vec (S 'Z) (M.Mealy Char (St (List Tok)))
-toRegEx = foldl1 (<.>) . map ((flip Cons Empty) . uncurry match) 
 
 
-tag :: [b] -> [(b, List b)]
+collapse l = fmap hom' $ F.fold $ (fmap . fmap) hom l
+
+(*) m = m <|> (m <.> (*)m)
+
+
+toRegEx r = foldl1 (<.>) . map (return . uncurry match) $ r
+
+
 tag = map $ (fmap (flip C Nil) . join (,))
 
 tag' :: Monoid b => [a] -> b -> [(a, b)]
