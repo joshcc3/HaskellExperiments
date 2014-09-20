@@ -15,6 +15,9 @@ import Control.Monad
 import Mon
 import Data.Sequence
 import qualified Data.Bifunctor as B
+import Control.Monad.Logic
+
+
 
 data Tok = IF | FOR | OPEN_P | CLOSE_P | INT_LIT Int | SEMI_COLON | VAR Char | EQUALS | SPC deriving (Eq, Ord, Show)
 
@@ -93,8 +96,8 @@ dropMealy n d = M.unfoldMealy (\s a -> if s > 0 then (Left d, s - 1) else (Right
 
 (<.>) m m' = m >>= (flip fmap m' . conc)
 
-(<|>) :: MonadPlus m => m (M.Mealy a b) -> m (M.Mealy a b) -> m (M.Mealy a b)
-(<|>) = mplus
+(<|>) :: MonadLogic m => m (M.Mealy a b) -> m (M.Mealy a b) -> m (M.Mealy a b)
+(<|>) = interleave
 
 instance Monoid b => Monoid (M.Mealy a b) where
     mempty = pure mempty
@@ -122,7 +125,7 @@ closeP = toRegEx $ tag' ")" (C CLOSE_P Nil)
 spc = toRegEx $ tag' " " (C SPC Nil)
 
 
-forward :: M.Mealy a1 a -> [a1] -> a1 -> (a, M.Mealy a1 a)
-forward m [] final = M.runMealy m final
-forward m (l:ls) final = forward (snd $ M.runMealy m l) ls final
+forward' :: M.Mealy a1 a -> [a1] -> a1 -> a
+forward' m [] final = fst $ M.runMealy m final
+forward' m (l:ls) final = forward' (snd $ M.runMealy m l) ls final
 
