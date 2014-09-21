@@ -1,20 +1,25 @@
-module Parse (token, (<:>), (<||>), (|*|), fastForward) where
+module Parse (token, (<:>), (<||>), (|*|)) where
 
 import Prelude hiding ((*))
-import Vec
-import RegExAutomata
-import Control.Arrow
-import Data.Machine
+import Data.Monoid
+import Lang
 
-newtype Parser n b = Parser [Mealy Char (St (List b))]
+newtype Parser b = Parser (Reg Char b)
 
-token s b = Parser $ toRegEx $ tag' s (C b Nil)
+instance Functor Parser where
+    fmap f (Parser b) = Parser (fmap f b)
 
-(|*|) (Parser x) = Parser $ (*) x
 
-(<:>) (Parser x) (Parser y) = Parser $ x <.> y
+token :: Monoid t => String -> t -> Parser t
+token s b = Parser $ toRegex $ tag b s
 
---(<||>) :: Parser n b -> Parser n' b -> Parser (Add n n') b
-(<||>) (Parser x) (Parser y) = Parser $ x <|> y
+(|*|) :: Monoid t => Parser t -> Parser t
+(|*|) (Parser x) = Parser $ star x
 
-fastForward (Parser regex) inp final = fmap (iso') *** (Parser . return) $ forward (collapse regex) inp final
+(<:>) :: Monoid t => Parser t -> Parser t -> Parser t
+(<:>) (Parser x) (Parser y) = Parser $ x `conc` y
+
+(<||>) :: Monoid b => Parser b -> Parser b -> Parser b
+(<||>) (Parser x) (Parser y) = Parser $ x `alter` y
+
+--fastForward (Parser regex) inp final = fmap (iso') *** (Parser . return) $ forward (collapse regex) inp final
