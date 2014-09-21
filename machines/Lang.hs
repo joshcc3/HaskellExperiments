@@ -30,27 +30,24 @@ match a b = do
   s <- get
   if (view s) == a then put (next s) >> return b else mzero
 
-c :: Monoid b => Reg a b -> Reg a b -> Reg a b
-c r r' = do
+conc :: Monoid b => Reg a b -> Reg a b -> Reg a b
+conc r r' = do
   b <- r
   b' <- r'
   return (b <> b')
   
-a :: Monoid b => Reg a b -> Reg a b -> Reg a b
-a = interleave
+alter :: Monoid b => Reg a b -> Reg a b -> Reg a b
+alter = interleave
 
 star :: Monoid b => Reg a b -> Reg a b
-star m = m `a` (m `c` star m)
+star m = m `alter` (m `conc` star m)
 
-ifR :: Reg Char String
-ifR = match 'i' "I" `c` match 'f' "F"
+tag :: Monoid b => b -> String -> [(Char, b)]
+tag final s = Prelude.zip (init s) (repeat mempty) ++ [(last s, final)]
 
-forR :: Reg Char String
-forR = match 'f' "F" `c` match 'o' "O" `c` match 'r' "R"
+toRegex :: (Monoid b, Eq a) => [(a, b)] -> Reg a b
+toRegex = foldl1 conc . map (uncurry match)
 
-foe :: Reg Char String
-foe = match 'f' "F" `c` match 'o' "O" `c` match 'e' "E"
+runReg :: Monoid c => ((b, Zip a) -> c) -> Zip a -> Reg a b -> c
+runReg f initS r = mconcat . fmap f $ observeAll $ runStateT r initS
 
-r1 = star forR
-
-trial initS r = observe $ runStateT r initS
