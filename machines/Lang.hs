@@ -7,15 +7,14 @@ import Control.Monad.Logic
 import Control.Monad.State
 import Data.Sequence
 import Pipes
-
-type Zip a = (Seq a, a, Seq a)
-
-
+import Control.Monad.Identity
 
 type Zip' m a = m (Seq a, a, Seq a, Producer a m ())
 
-forward' :: Monad m => Zip' m a -> Zip' m a
-forward' m = do
+type Zip a = Zip' Identity a
+
+forward :: Monad m => Zip' m a -> Zip' m a
+forward m = do
   (s, a, s', p) <- m
   case viewl s' of
     EmptyL -> next p >>= \x -> case x of
@@ -23,52 +22,45 @@ forward' m = do
                                Right (a', p'') -> return (s |> a, a', s', p'')
     (a' :< s'') -> return (s |> a, a', s'', p)
 
--- Zip = Zip' Identity, change to use this
+view :: Monad m => Zip' m a -> m a
+view m = m >>= \(_, a, _, _) -> return a
 
-forward :: Zip a -> Zip a
-forward (s, a, s') = case (viewl s') of
-                    EmptyL -> error "Stream dried up"
-                    (a' :< s'') -> (s |> a, a', s'')
+view' :: Zip a -> a
+view' = runIdentity . view
 
-view' :: Monad m => Zip' m a -> m a
-view' m = m >>= \(_, a, _, _) -> return a
+type Reg m a b = StateT (Zip' m a) (LogicT m) b
 
-view :: Zip a -> a
-view (_, a, _) = a
-
-type Reg a b = StateT (Zip a) Logic b
-
-
-match :: Eq a => a -> b -> Reg a b
+match :: (Monad m, Eq a) => a -> b -> Reg m a b
 match a b = do
   s <- get
-  if (view s) == a then put (forward s) >> return b else mzero
+  inp <- (lift . lift) (view s)
+  if inp == a then put (forward s) >> return b else mzero
 
-
-
-conc :: Monoid b => Reg a b -> Reg a b -> Reg a b
+conc :: (Monoid b, Monad m) => Reg m a b -> Reg m a b -> Reg m a b
 conc r r' = do
   b <- r
   b' <- r'
   return (b <> b')
   
-alter :: Monoid b => Reg a b -> Reg a b -> Reg a b
+alter :: (Monoid b, Monad m) => Reg m a b -> Reg m a b -> Reg m a b
 alter = interleave
 
-star :: Monoid b => Reg a b -> Reg a b
+star :: (Monoid b, Monad m) => Reg m a b -> Reg m a b
 star m = m `alter` (m `conc` star m)
 
 tag :: Monoid b => b -> String -> [(Char, b)]
 tag final s = Prelude.zip (init s) (repeat mempty) ++ [(last s, final)]
 
-toRegex :: (Monoid b, Eq a) => [(a, b)] -> Reg a b
+toRegex :: (Monoid b, Eq a, Monad m) => [(a, b)] -> Reg m a b
 toRegex = foldl1 conc . map (uncurry match)
 
-runReg :: Monoid c => ((b, Zip a) -> c) -> Zip a -> Reg a b -> c
-runReg f initS r = mconcat . fmap f $ observeAll $ runStateT r initS
+runReg :: (Monoid c, Functor m, Monad m) => ((b, Zip' m a) -> c) -> Producer a m () -> Reg m a b -> m c
+runReg f p r = fmap (mconcat . fmap f) $ observeAllT $ runStateT r (next p >>= \x -> case x of
+                                                                             Left _ -> error "Empty Stream"
+                                                                             Right (a, p') -> return (fromList [], a, fromList [], p'))
 
-runReg' :: (Monoid b, Eq a) => Zip a -> Reg a b -> [b]
-runReg' initS r = fmap fst $ observeAll $ runStateT r initS
+runReg' :: (Monoid b, Eq a, Functor m, Monad m) => Producer a m () -> Reg m a b -> m [b]
+runReg' p r = runReg (\(b, _) -> [b]) p r
 
 
 --ifR = toRegex $ tag "IF" "if" 
