@@ -1,29 +1,72 @@
 module Main where
 
 import Prelude hiding (Either(..), either, (*), (^))
-import RegExAutomata
-import Control.Applicative hiding ((<|>))
-import Data.Monoid 
-import Control.Arrow
+import Data.Char
+import Parse
+import Data.Semigroup
+import Pipes
 
+main :: IO ()
 main = do
-    s <- getLine
-    if length s == 0 then print "Must be at least 1" >> main else print $ fmap (iso') $ fst $forward (collapse regex) (init s) (last s)
+  s <- getLine
+  b <- runParse (prod s) toyR
+  (print . filter (/= WS) . getLast) b
+{-
+int <var name> = <int literal>
+int [] <var name> = new int [<int literal>]
+if ( var name | bool literal ) {
+  stat
+}
+-}
 
-f ^ 0 = id
-f ^ n = f . (f ^ (n - 1))
+data Tok =  INT | EQUALS | O_PARENS | C_PARENS | IF | NEW | SEMI_COLON
+          | Id String | Lit Lit | WS deriving (Eq, Ord, Show, Read)
 
-regex =  (base <|> (base <.> base)) <.> (base <|> (base<.> base))
--- (f base ^ 10) base
-    where 
-      base = ifR <.> spc
+data Lit = INT_LITER String | TRUE | FALSE deriving (Eq, Ord, Show, Read)
 
+toks :: [(String, Tok)]
+toks = [("int", INT), ("=", EQUALS), ("(", O_PARENS), (")", C_PARENS), ("new", NEW), ("if", IF), (";", SEMI_COLON)]
 
+instance Semigroup Lit where
+    (<>) (INT_LITER s) (INT_LITER s') = INT_LITER $ s <> s'
+    _ <> _ = TRUE
 
--- m <> (m <.> (m <> (m <.> m)))
--- m <> (m <.> m <> m <.> m <.> m)
--- m <> m <.> m <> m <.> m <.> m ... 
+--------------------------------------------------------------------------------
 
+uAlpha :: [Char]
+uAlpha = map chr [65..90]
 
+lAlpha :: [Char]
+lAlpha = map chr [97..122]
 
---(*) m =  fmap hom' (fmap hom m <> fmap hom (m <.> (*)m))
+nums :: [Char]
+nums = concatMap show  ([0..9] :: [Int])
+
+lAlphaR :: Parse.Parser String
+lAlphaR = foldl1 (<||>) [char c [c] | c <- lAlpha]
+
+uAlphaR :: Parse.Parser String
+uAlphaR = foldl1 (<||>) [char c [c] | c <- uAlpha]
+
+digR :: Parse.Parser String
+digR = foldl1 (<||>) [char c [c] | c <- nums]
+
+litR :: Parse.Parser Lit
+litR = (fmap INT_LITER $ (|*|) digR) <||> token "true" TRUE <||> token "false" FALSE
+
+identR :: Parse.Parser Tok
+identR = fmap Id $ lAlphaR <:> ((|*|) (lAlphaR <||> uAlphaR <||> digR))
+
+tokR :: Parse.Parser Tok
+tokR = foldl1 (<||>) (map (uncurry token) toks) <||> identR <||> fmap Lit litR
+ 
+ws :: Parse.Parser Tok
+ws = fmap (const WS) $ (|*|) $ char ' ' () <||> char '\n' () <||> char '\t' ()
+
+toyR :: Parse.Parser (Last [Tok])
+toyR = fmap Last $ (|*|) $ fmap (:[]) tokR <:> fmap (:[]) ws
+
+--------------------------------------------------------------------------------
+
+prod :: Monad m => String -> Producer Char m ()
+prod s = foldl1 (>>) $ Prelude.map yield s
