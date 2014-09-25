@@ -1,5 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
-
 module Lang where
 
 import Data.Semigroup
@@ -45,6 +43,12 @@ match a b = do
   inp <- (lift . lift) (view s)
   if inp == a then put (forward s) >> return b else mzero
 
+match' :: (Monad m, Eq a) => a -> Reg m a a
+match' a = do
+  s <- get
+  inp <- (lift . lift) (view s)
+  if inp == a then put (forward s) >> return a else mzero
+
 conc :: (Semigroup b, Monad m) => Reg m a b -> Reg m a b -> Reg m a b
 conc r r' = do
   b <- r
@@ -66,6 +70,7 @@ toRegex = foldl1 conc . map (uncurry match)
 toRegex' :: (Eq a, Monad m) => [(a, Last b)] -> Reg m a b
 toRegex' = fmap getLast . toRegex
 
+-- cant handle no tokens parsed
 runReg :: (Semigroup c, Functor m, Monad m) => ((b, Zip' m a) -> c) -> Producer a m () -> Reg m a b -> m c
 runReg f p r = fmap (sconcat . Data.List.NonEmpty.fromList . fmap f) $ observeAllT $ runStateT r (next p >>= \x -> case x of
                                                                              Left _ -> error "Empty Stream"
