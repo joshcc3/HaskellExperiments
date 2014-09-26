@@ -14,3 +14,20 @@ Thus in order to mapEq, we just substitute a for s in f s which we can only do i
 What fromEq says is, if we have the proof that s ~ a and b ~ t, then we have the proof that b ~ t and s ~ a.
 
 Right, now the big one 'substEq'. What substEq says is that, if we have a proof that s ~ a, and b ~ t then we can create an r that can only be created if this constraint is satified. The challenge with this function is convincing the type checker of the equality using data. This construction, the AnEquality proves it. The reason we get confused with such a thing is that we are assuming this to be forall s t a b. The truth is, this proof will only work when we are  given a valid proof. A valid proof has to have the form (Identical -> Identical) because a proof is only valid if the types of its arguments are inhabitated. 
+
+--------------------------------------------------------------------------------
+
+Isos:
+
+Isos are a subtype of Equality. Hence that is what we are going to build them on.
+
+Apparently, equality is strictly more general than isomorphisms.
+
+iso
+This constructs an isomorphism from (s -> a), (b -> t). In category theory the forward and backward mapping, a ~ b, and s ~ t.
+
+
+from 
+Symmetry of an isomorphism. (s -> a) (b -> t) ~ (b -> t) (s -> a)
+
+
