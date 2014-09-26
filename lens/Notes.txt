@@ -30,4 +30,9 @@ This constructs an isomorphism from (s -> a), (b -> t). In category theory the f
 from 
 Symmetry of an isomorphism. (s -> a) (b -> t) ~ (b -> t) (s -> a)
 
+curried, uncurried simple enum are all familiar ismorphism
+
+au allows us to go from "s" -> "t". that is allow us to express the assumption of the isomorphism (in order to have the back and forth morphism). "a" -> "b" is expressed as Iso s t a b  is isomorphic to Iso b a t s (using from)
+
+auf generalizes au
 
