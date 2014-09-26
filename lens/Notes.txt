@@ -1,0 +1,16 @@
+Identical s t a b is a type with the only inhabitant, of type Identical a b a b
+
+Equality s t a b is a witness that s ~ a and b ~ t.
+What we mean by a witness is that, if there is a function that can go from
+p a (f b) -> p s (f t), forall p and f, it is not possible unless the types are equal.
+the existence of such a function implies equality and the function is the witness.
+
+One witness is AnEquality.
+We have to define mapEq.
+mapEq says: If we have a witness that proves that (s ~ a, b ~ t), then we can perform the substitution s -> a in any context, f i.e. f s -> f a
+
+Thus in order to mapEq, we just substitute a for s in f s which we can only do if the context s ~ a is satisfied, which thus makes it fall right out of substEq.
+
+What fromEq says is, if we have the proof that s ~ a and b ~ t, then we have the proof that b ~ t and s ~ a.
+
+Right, now the big one 'substEq'. What substEq says is that, if we have a proof that s ~ a, and b ~ t then we can create an r that can only be created if this constraint is satified. The challenge with this function is convincing the type checker of the equality using data. This construction, the AnEquality proves it. The reason we get confused with such a thing is that we are assuming this to be forall s t a b. The truth is, this proof will only work when we are  given a valid proof. A valid proof has to have the form (Identical -> Identical) because a proof is only valid if the types of its arguments are inhabitated. 
