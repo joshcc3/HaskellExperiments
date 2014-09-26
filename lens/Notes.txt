@@ -36,3 +36,17 @@ au allows us to go from "s" -> "t". that is allow us to express the assumption o
 
 auf generalizes au
 
+--------------------------------------------------------------------------------
+
+Lens
+
+Equality allowed us to make no assumptions about the contexts. Thus, the s ~ a, and b ~ t as that was the only way possible to get a morphism between them (the equals ones were in the same contexts).
+
+Iso allowed us to play around with the values contained in the contexts however it was still general enough that a morphism from one to the other meant these objects were indistinguishable based purely on the properties used to define them. Isomorphisms give us the reverse mapping precisely because they must work in any context that allow mapping, thus to provide the mapping there must be the mappings. Profunctors are the essence of mapping and are thus used. the existential quantification is what allows this specific behaviour.
+
+Lenses are not isomorphisms because they break the mapping between random contexts, of the first argument. however a mapping between the b and the t must still be there.
+
+thus the a is tied to the s, the t is tied to the b from the iso. all isos ar still lenses but not all lenses will be isos.
+
+
+
