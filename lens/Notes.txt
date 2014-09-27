@@ -48,5 +48,30 @@ Lenses are not isomorphisms because they break the mapping between random contex
 
 thus the a is tied to the s, the t is tied to the b from the iso. all isos ar still lenses but not all lenses will be isos.
 
+the to mapping is straight forward, the reverse mapping has a dependency on the 's', which means the (s, b) -> t. s -> a.  
 
 
+--------------------------------------------------------------------------------
+Getters further restrict a lens by requiring the functor to be both contravariant covariant. This ensures theat that the functor is independent of the type variables. Making them read-only. The target of the getter is independent of the type of the functor hence we can do nothing except possible view it.
+--------------------------------------------------------------------------------
+Prisms
+
+Choice class contains
+left' :: p a b -> p (Either a c) (Either b c)
+right' :: p a b -> p (Either c a) (Either c b)
+
+An applicative is a monoidal functor. That is it a functor from one monoidal category to another. It contains the function (*) that must follow the laws that the monoidal operation must be obeyed. The prism allows us to have choice in what we focus on, that is it can fail. 
+
+A prism allows the target of s to fail
+
+-------------------------------------------------------------------------------- 
+
+All this time we have been and interacting mainly with the s -> a, however the reverse mapping is also present from the profunctor which we can still use. 
+THe reverse mapping always suceeds, however the to-mapping may fail.
+
+_Left creates a prism that allows us to view the a or fail giving us the c. 
+The relationship between the s and the a is clear cut. The relationship between and t is that of
+
+--------------------------------------------------------------------------------
+
+Traversals are 

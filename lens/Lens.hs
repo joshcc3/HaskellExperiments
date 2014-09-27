@@ -9,8 +9,6 @@
 
 module Lens where
 
-import Data.Profunctor
-import Control.Monad.Identity
 import Type
 import Control.Monad.State
 
