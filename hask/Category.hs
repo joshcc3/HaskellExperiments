@@ -12,6 +12,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ConstraintKinds #-}
 
+module Cateogry where
+
 import Prelude (Either(..), ($), undefined, Ord(..), Eq(..))
 
 type family (~>) :: i -> i -> *
