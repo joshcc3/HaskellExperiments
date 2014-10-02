@@ -233,3 +233,73 @@ bF :: b -> r
 a
 
 >
+
+
+
+<
+
+Recently undertook developing a parser EDSL. Although it's an NFA it illustrates in italic cursive a few of Haskell's strengths. The elegance and power of Haskell EDSLs, the guidance types provide in programming and code reuse.
+
+So first lets define what we want to build. A parser is a program that analyzes a string of tokens based on a formal grammar. Thus we want to expose a grammar to the user and something that consumes sentences in the grammar and spits out an answer.
+ 
+We'll use regular expressions for that grammar, our interface will thus comprise:
+match :: Token -> Result -> Parser Token Result
+concatenate :: Parser Token Result -> Parser Token Result -> Parser Token Result
+alternate :: Parser Token Result -> Parser Token Result -> Parser Token Result
+step :: (Token,  Parser Token Result) -> (Either Error Result, Either Err (Either (Parser Token Result) Result))
+
+The match combinator should, if it matches a token output the result or the error otherwise.
+Concatenate should join two regular expressions end to end, such that it doesn't succeed until both succeed. Alternate should succeed if any of its operands succeed and if both succeed probably take the monoidal sum of them. In fact we could proably replace them with the predicates for success and failure. This gives us all the interesting properties of boolean algebra
+Let's play a little with these functions and see what sort of behavior we'd expect from them.
+
+
+step a (match a r) =  (Right r, Right (Right r))
+step b (match a r) = (Left err, Left err)
+step a (match a r  `concatenate` match b r') = (Right r, Right (Left (match b r)))
+
+The above is fairly standard behavior we'd expect from step, it's just deconstructing a stream with support for error handling and stream termination. 
+
+Left x  `concatenate` p = Left x 
+p `concatenate` Left x = Left x -- Absorption
+p `concatenate` (p' `concatenate` p'') = (p `concatenate` p') `concatenate` p'' -- Associativity
+
+Left x `alternate` p = p -- Identity
+p `alternate` (p' `alternate` p'') = (p `alternate` p') `alternate` p'' -- Associativity
+p `alternate` p' = p' `alternate` p -- Commutativity
+
+Distributivity
+p `concatenate` (p' `alternate` p'') = (p `concatenate` p' `alternate` p `concatenate` p'')
+p `alternate` (p' `concatenate` p'') = (p `alternate` p') `concatenate` (p `alternate` p'')
+
+This is in captured by the MonadPlus type class with mplus as alternate and (>>=) as concatenate. 
+Thus all we need to do to create our parser is simply add handling for the input and we are done. Generation of input must be a seperate concern from the querying of input. Since we are developing a non-deterministic parser we will have to jump about in the stream. Thus our input will consist of a stream generator and our position in the stream. Zippers are excellent for keeping track of positions in the stream. A parser must thus track the current state of the input. 
+The english naturally describes the type for the parser 
+type Zipper i = ([i], i, [i])
+type St i = (Zipper i, Producer i)
+type Parser i o = MonadPlus m => StateT (St i) m o 
+ 
+Each of the above definitions write themselves. As a point of case, in general since we develop context independent grammars, the applicative instance is sufficient.
+
+However regular expressions derive their power from the * operator. * can be seen as matching, 0 or more occurences of a regex, adding this functionality will be discussed in the next post.
+
+<
+
+m* = Nothing `alternate` m `alternate` (m `concatenate m) `alternate` (m `concatenate m `concatenate m) ...
+first attempt at defining that..
+m* = [foldl concatenate (replicate n m) | x <- [1..]]
+but wait, this wont work because in order to make the first step it must check the infinite disjunctions.
+We use our distributivity to factorize and obtain:
+m* = Nothing `alternate` m `concatenate` (Nothing `alternate` m `concatenate` (...
+Here m* is the fixed point of the above hence we have the equation, 
+m* = Nothing `alternate` m `concatenate` m*
+However trying this out doesn't seem to work either. This is because
+Thus we require interleaving of the output, which is achieved through the logict interface. Our code was extensible enough that we could add the effects we wanted with ease.  
+>
+
+<
+Now that we've created our framework, it's time to start writing parsers. The lexer will be our first parser for which we generate these tokens. Now to develop a parser on the lexixcal input. This parses the stream and its an edsl sp we can add type information to restrict the parser etc.
+>
+
+<
+Prisms: Prisms are the next interesting thing after Isos. We slowly give each next layer more power. The profunctor is not just a profunctor but also choice. Choice gives us two new functions left' :: p a b -> p (Either a c) (Either b c) and right' :: p a b -> Either (c a) (c b). This allows us to create a dependency on the
+>
