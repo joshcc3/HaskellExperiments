@@ -46,3 +46,8 @@ topSort a = map fst res
     where 
       res = sortBy f $ zip [0..] $ eval a
       f x y = compare (length (snd x)) (length (snd y))
+
+
+
+
+
