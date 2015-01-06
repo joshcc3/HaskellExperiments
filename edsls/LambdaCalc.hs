@@ -1,70 +1,90 @@
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module LambdaCalculus where
+module LambdaCalc where
 
-import qualified Data.Map as M
-import Data.Monoid
+import qualified Data.Set as S
+import Data.Functor.Foldable
 
-type TypeVar = Int
+type Var = String
 
-data Type = Phi TypeVar | Arrow Type Type deriving (Eq, Ord, Show)
+data LambdaTF n = VarF Var | LamF Var n | AppF n n 
+                  deriving (Eq, Ord, Show, Functor)
 
-data Var = Var (Char, Int) deriving (Eq, Ord, Show)
+data LambdaT = Var Var | Lam Var LambdaT | App LambdaT LambdaT 
+                  deriving (Eq, Ord)
 
-data LambdaTerm = V Var | App LambdaTerm LambdaTerm | Abs Var LambdaTerm deriving (Eq, Ord, Show)
+instance Show LambdaT where
+    show (Var v) = v
+    show (Lam v l) = concat ["\\",v, "->", show l]
+    show (App l l') = concat [show' l, show' l']
+        where 
+          show' (Var v) = v
+          show' e = "(" ++ show e ++ ")"
 
-type Substitution = LazyMap TypeVar Type
+type instance Base LambdaT = LambdaTF
 
-type Context = [(TypeVar, Type)]
+instance Foldable LambdaT where
+    project (Var v) = VarF v
+    project (Lam v l) = LamF v l
+    project (App l l') = AppF l l'
 
-data LazyMap a b = Null | Node (LazyMap a b) (a, b) (LazyMap a b) deriving (Eq, Ord, Show)
+instance Unfoldable LambdaT where
+    embed (VarF v) = Var v
+    embed (LamF v l) = Lam v l
+    embed (AppF l l') = App l l'
 
-
-instance Monoid (LazyMap Int Type) where
-  mempty = Null
-  Null `mappend` m = m
-  m `mappend` Null = m
-  m `mappend` (Node n (a, b) n') = Node (m `mappend` n) (a, applySub m b) (m `mappend` n')
-
-insert :: Ord a => a -> b -> LazyMap a b -> LazyMap a b
-insert k a Null = Node Null (k, a) Null
-insert k b (Node n (k',a') n') | k < k' = Node (insert k b n) (k', a') n'
-                               | k > k' = Node n (k', a') (insert k b n')
-                               | otherwise = Node n (k, b) n'
-
-fromList :: Ord a => [(a, b)] -> LazyMap a b
-fromList = foldr (uncurry insert) Null
-
-lookin :: Ord a => LazyMap a b -> a -> b
-lookin (Node n (k, a) n') k' | k < k' = lookin n' k'
-                             | k > k' = lookin n k'
-                             | otherwise = a
-
-union :: LazyMap a b -> LazyMap a b -> (LazyMap a b, LazyMap a b)
-union Null m = (Null, m)
-union m Null = (Null, m)
-union (Node n (k, v) n') (Node x (k', v') x') = undefined
-
-containsTypeVar :: Int -> Type -> Bool
-containsTypeVar t (Phi t') = t == t'
-containsTypeVar t (Arrow a b) = containsTypeVar t a || containsTypeVar t b
-
-unify :: Type -> Type -> M.Map TypeVar Type
-unify (Phi t) (Phi t') = M.fromList [(t, Phi t')]
-unify (Phi t) b | not (containsTypeVar t b) = M.fromList [(t, b)]
-                | otherwise = error "Impossible to Unify"
-unify a (Phi t) = unify (Phi t) a
-unify (Arrow a b) (Arrow c d) = unify a c `M.union` unify b d
-
-applySub :: Substitution -> Type -> Type
-applySub s (Phi t) = lookin s t
-applySub s (Arrow a b) = Arrow (applySub s a) (applySub s b)
-
-unifyContexts :: Context -> Context -> Substitution
-unifyContexts [] _ = Null
-unifyContexts ((tV, t):cs) c = undefined
+fv :: LambdaT -> S.Set Var
+fv = cata fv'
+    where 
+      fv' :: LambdaTF (S.Set Var) -> S.Set Var
+      fv' (VarF v) = S.singleton v
+      fv' (LamF v l) = l S.\\ S.singleton v
+      fv' (AppF l l') = S.union l l'
 
 
---f :: [a] -> Int
-f [] = 0
-f x = f (replicate (length x) (length x))
+betaR :: LambdaT -> LambdaT
+betaR = ana betaR'
+    where 
+      betaR' :: LambdaT -> LambdaTF LambdaT
+      betaR' (Var v) = VarF v
+      betaR' (Lam v l) = LamF v l
+      betaR' (App (Lam v b) l') = project $ subst l' v b
+      betaR' (App l l') = AppF l l'
+
+
+subst :: LambdaT -> Var -> LambdaT -> LambdaT
+subst l v = para subst' 
+    where 
+      subst' :: LambdaTF (LambdaT, LambdaT) -> LambdaT
+      subst' (VarF v') | v' == v = l
+                       | otherwise = Var v'
+      subst' (AppF (_, n) (_, n')) = App n n'
+      subst' (LamF v' (o, n)) | v' == v = Lam v'' n'
+                              | otherwise = Lam v' n
+          where 
+            v'' = nextVar (S.findMax $ fv n)
+            n' = subst (Var v'') v' n
+            nextVar :: String -> String
+            nextVar [] = error "Empty var name"
+            nextVar "z" = "x0"
+            nextVar [c] = [succ c]
+            nextVar (v:num) = v:show (read num + 1)
+
+
+relabel :: Var -> Var -> LambdaT -> LambdaT
+relabel v rv (Var v') | v == v' = Var rv
+                      | otherwise = Var v'
+relabel v rv (Lam v' l) | v == v' = Lam rv (relabel v rv l)
+                        | otherwise = Lam v' (relabel v rv l)
+relabel v rv (App l l') = App (relabel v rv l) (relabel v rv l') 
+
+infixl 9 #
+
+(#) :: (a -> b) -> a -> b
+(#) f a = f a
+
+
+
+
