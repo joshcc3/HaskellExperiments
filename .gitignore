@@ -3,3 +3,5 @@
 *.hi
 *.ho
 frpDots*
+dist/
+.*

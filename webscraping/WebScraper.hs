@@ -34,7 +34,7 @@ myParser (NTreeF (XTag qn t) n) =  do
   foldl (!) tag (Prelude.map getAttr t) $ tagBody 
       where 
         tag = tagTbl . unXN . localPart' $ qn
-        tagBody = foldl (>>) "" n 
+        tagBody = foldl (<>) "" n 
 
 al (Just x) = x
 
@@ -60,7 +60,7 @@ instance Foldable (NTree a) where
     project (NTree a l) = NTreeF a l
 
 getOut inp =
-    runX $ readString [withParseHTML yes, withWarnings no] inp >>> indentDoc
+    runX $ readString [withParseHTML yes, withWarnings no] inp
 
 
 main :: IO ()
@@ -68,7 +68,10 @@ main = do
   fileName <- getLine
   inp <- r fileName
   out <- getOut inp
-  let (NTree _ n:_) = out
-  putStrLn . renderHtml . mconcat . Prelude.map (cata myParser) $ n
+  putStrLn . renderHtml . solve $ out
+  
+solve :: [NTree XNode] -> Html
+solve out =
+  let (NTree _ n:_) = out in mconcat . Prelude.map (cata myParser) $ n
     
 
