@@ -2,7 +2,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module LambdaCalc where
+module LambdaCalc(LambdaT(..), Var, fv, betaR, (#)) where
 
 import qualified Data.Set as S
 import Data.Functor.Foldable
@@ -72,13 +72,6 @@ subst l v = para subst'
             nextVar [c] = [succ c]
             nextVar (v:num) = v:show (read num + 1)
 
-
-relabel :: Var -> Var -> LambdaT -> LambdaT
-relabel v rv (Var v') | v == v' = Var rv
-                      | otherwise = Var v'
-relabel v rv (Lam v' l) | v == v' = Lam rv (relabel v rv l)
-                        | otherwise = Lam v' (relabel v rv l)
-relabel v rv (App l l') = App (relabel v rv l) (relabel v rv l') 
 
 infixl 9 #
 
