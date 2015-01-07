@@ -34,8 +34,6 @@ yC = lam "f" $
              app (var "f") (app (var "x") (var "x"))
 
 
-
-
 selfApp :: LambdaT
 selfApp = lam "x" $ app (var "x") (var "x")
 
