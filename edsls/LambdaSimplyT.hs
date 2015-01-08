@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -5,59 +6,73 @@
 {-# LANGUAGE TypeFamilies #-}
 module LambdaSimplyT where
 
+import Control.Applicative
+import Control.Arrow
 import LambdaCalc
-import qualified Map as M
+import qualified Data.Map as M
 import Control.Monad.State
 import Data.Functor.Foldable
 import qualified Data.Set as S
 import Data.Semigroup 
-import qualified Data.Map as SM
 
-data CType = TVar String | CType :-> CType deriving (Eq, Ord)
+data CType a = TVar a | CType a :-> CType a deriving (Eq, Ord, Functor)
 
-instance Show CType where
-    show (TVar s) = s
-    show (TVar a :-> b) = concat [a, " -> ", show b]
+instance Applicative CType where
+    pure a = pure a :-> pure a
+    TVar f <*> TVar a = TVar (f a)
+    c <*> (a :-> b) = (c <*> a) :-> (c <*> b)
+    (a :-> b) <*> c = (a <*> c) :-> (b <*> c)
+
+instance Monad CType where
+    return = pure
+
+    (TVar a) >>= f = f a
+    (a :-> b) >>= f = (a >>= f) :-> (b >>= f)
+
+instance Show a =>  Show (CType a) where
+    show (TVar s) = show s
+    show (TVar a :-> b) = concat [show a, " -> ", show b]
     show (a :-> b) = concat ["(", show a, ")", " -> ", show b]
 
-data CTypeF n = TVarF String | ArrF n n deriving (Eq, Ord, Show, Functor)
+data CTypeF a n = TVarF a | ArrF n n deriving (Eq, Ord, Show, Functor)
 
-type Context = M.LazyMap String CType
 
-type St = String
+type Context a = M.Map a (CType a)
 
-type Subst = M.LazyMap String CType
+--type St = String
 
-type instance Base CType = CTypeF
+type Subst a = a -> CType a
 
-instance Foldable CType where
+type instance Base (CType a) = CTypeF a
+
+instance Foldable (CType a) where
     project (TVar s) = TVarF s
     project (c :-> c') = ArrF c c'
 
-instance Unfoldable CType where
+instance Unfoldable (CType a) where
     embed (TVarF s) = TVar s
     embed (ArrF n n') = n :-> n'
 
-tvars :: CType -> S.Set String
+tvars :: Ord a => CType a -> S.Set a
 tvars = cata tvars'
     where 
-      tvars' :: CTypeF (S.Set String) -> S.Set String
       tvars' (TVarF v) = S.singleton v
       tvars' (ArrF l l') = l `S.union` l'
 
 
-class Substit a where
-    subst :: Subst -> a -> a
-                
-instance Substit CType where
-    subst s (TVar v) = maybe (TVar v) id (M.lookup v s)
-    subst s (a :-> b) = subst s a :-> subst s b
 
-instance Substit Context where
-    subst s c = M.map (subst s) c
+subst :: Subst a -> CType a -> CType a
+subst = (=<<)
 
-instance (Substit a, Substit b) => Substit (a, b) where
-    subst s (a, b) = (subst s a, subst s b)
+-- substC is a functor
+substC :: Subst a -> Context a -> Context a
+substC = fmap M.map subst
+
+-- substP behaves like an Applicative functor
+substP :: (a -> b -> c) -> a -> b -> (c, c)
+substP = (.) $ join (&&&)
+
+{-
 
 unify :: CType -> CType -> Subst
 unify (TVar a) t | S.member a (tvars t) = error "Impossible type"
@@ -66,18 +81,22 @@ unify (a :-> b) (c :-> d) = comp (unify a c) (unify b d)
 unify a b = unify b a
 
 
+--unifyContexts :: Context -> Context -> Subst
+--unifyContexts c c' = unifyContexts' c 
 unifyContexts :: Context -> Context -> Subst
-unifyContexts c c' = M.foldWithKey f (M.toLMap (Just . TVar) SM.empty) c'
+unifyContexts c c' = M.foldWithKey g (M.empty) c'
     where 
-      f :: String -> CType -> Subst -> Subst
-      f tv t s = maybe s (\t' -> comp (unify t t') s) (M.lookup tv c)
+      g :: String -> CType -> Subst -> Subst
+      g tv t s = maybe s (\t' -> unify t t' `comp` s) (M.lookup tv c)
 
 
 comp :: Subst -> Subst -> Subst
-comp s s' = M.map f s' 
+comp s s' = M.LMap (g, m)
     where 
-      f :: CType -> CType
-      f = subst s
+      m = foldl f SM.empty (M.keys s ++ M.keys s')
+      f :: SM.Map String CType -> String -> SM.Map String CType
+      f cS tv = SM.insert tv (subst s . subst s' $ TVar tv) cS
+      g v = undefined
 
 
 ppC :: LambdaT -> StateT St IO (Context, CType)
@@ -102,13 +121,13 @@ ppC (App m n) = do
   put phi
   (pi1, p1) <- ppC  m  -- p1 = c
   (pi2, p2) <- ppC n -- p2 = d
-  let !s1 = unify p1 (p2 :-> TVar phi) -- unify c (d -> b) = c -> (d -> b)
+  let !s1 = unify p1 (p2 :-> TVar phi) 
       !s2 = uncurry unifyContexts . subst s1 $ (pi1, pi2) -- 
   return $ subst ((s2 `comp` s1)) (M.map getFirst $ M.map First pi1 `M.union` M.map First pi2, TVar phi)
   
       
-
 fresh :: String -> String
 fresh "z" = "x0"
 fresh [v] = [succ v]
 fresh (v:n) = v:show (read n + 1)
+-}
