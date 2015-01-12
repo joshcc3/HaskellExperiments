@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE BangPatterns #-}
@@ -17,17 +18,29 @@ import Data.Semigroup
 
 data CType a = TVar a | CType a :-> CType a deriving (Eq, Ord, Functor)
 
+newtype ZipCType a = ZipCT { unzp :: CType a } deriving (Eq, Ord, Show, 
+                                                        Functor, Monad)
+
+
 instance Applicative CType where
     pure a = pure a :-> pure a
     TVar f <*> TVar a = TVar (f a)
     c <*> (a :-> b) = (c <*> a) :-> (c <*> b)
     (a :-> b) <*> c = (a <*> c) :-> (b <*> c)
 
+
 instance Monad CType where
     return = pure
 
     (TVar a) >>= f = f a
     (a :-> b) >>= f = (a >>= f) :-> (b >>= f)
+
+instance Applicative ZipCType where
+    pure = ZipCT . pure
+    ZipCT (TVar f) <*> ZipCT (TVar a) = ZipCT (TVar (f a))
+    (ZipCT (a :-> b)) <*> (ZipCT (c :-> d)) = ZipCT $ (a <*> c) :-> (b <*> d)
+    (ZipCT c) <*> (ZipCT c') = ZipCT (c <*> c')
+
 
 instance Show a =>  Show (CType a) where
     show (TVar s) = show s
@@ -60,7 +73,7 @@ tvars = cata tvars'
       tvars' (ArrF l l') = l `S.union` l'
 
 
-
+-- Subst is a functor from the Kleisel category to the category of functions
 subst :: Subst a -> CType a -> CType a
 subst = (=<<)
 
@@ -68,12 +81,16 @@ subst = (=<<)
 substC :: Subst a -> Context a -> Context a
 substC = fmap M.map subst
 
--- substP behaves like an Applicative functor
+-- substP behaves like pure Applicative functor
 substP :: (a -> b -> c) -> a -> b -> (c, c)
 substP = (.) $ join (&&&)
 
-{-
+unify :: CType a -> CType a -> Subst a
+unify t t' = undefined -- unzp $ f <$> ZipCT t <*> ZipCT t'
+    where 
+      f = undefined
 
+{-
 unify :: CType -> CType -> Subst
 unify (TVar a) t | S.member a (tvars t) = error "Impossible type"
                  | otherwise = M.fromList [(a, t)]
@@ -88,8 +105,8 @@ unifyContexts c c' = M.foldWithKey g (M.empty) c'
     where 
       g :: String -> CType -> Subst -> Subst
       g tv t s = maybe s (\t' -> unify t t' `comp` s) (M.lookup tv c)
-
-
+-}
+{-
 comp :: Subst -> Subst -> Subst
 comp s s' = M.LMap (g, m)
     where 
@@ -131,3 +148,6 @@ fresh "z" = "x0"
 fresh [v] = [succ v]
 fresh (v:n) = v:show (read n + 1)
 -}
+
+ppC :: LambdaT -> StateT String IO (Context String, CType String)
+ppC = undefined
