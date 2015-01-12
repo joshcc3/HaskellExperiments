@@ -52,8 +52,6 @@ data CTypeF a n = TVarF a | ArrF n n deriving (Eq, Ord, Show, Functor)
 
 type Context a = M.Map a (CType a)
 
---type St = String
-
 type Subst a = a -> CType a
 
 type instance Base (CType a) = CTypeF a
