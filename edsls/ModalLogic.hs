@@ -1,3 +1,4 @@
+
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DeriveFunctor #-}
@@ -40,4 +41,11 @@ false = Fix $ Not (Fix TrueM)
 
 -- this is the meaning of a set
 type Set a = a -> Bool
+
+
+data TemporalF a n = IdT a | NotT a | AndT n n | G n | X n | U n n
+
+type Temporal a = Fix (TemporalF a)
+
+
 

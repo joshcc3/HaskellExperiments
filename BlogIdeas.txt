@@ -1,0 +1,1 @@
+Deriving a monad instance for TreeF a n = Node n a n | Null
