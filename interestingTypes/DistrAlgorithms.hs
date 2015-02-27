@@ -28,7 +28,8 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 import Control.Monad
 import Data.Functor.Foldable
-
+import Control.Monad.Writer
+import Control.Monad
 
 type Time = Int
 
@@ -40,23 +41,56 @@ type ExitCode = Int
 
 type Hist = forall a b. Proc a b -> Time -> FDetOut
 
-type Proc' a b = Free (Proc'' a b IO)
-
-type PMonSt m = ReaderT Config (StateT St m)
-
-type Proc a b = PMonSt (Proc' a b) ExitCode
-
 type FDetOut = PMonSt Identity (S.Set Int)
 
 type Pid = Int
 
 type Config = ([Pid], Size)
 
-type St = Time
+type St = ()
 
 type Size = Int
 
 type Delta = Time
+
+type Proc' a b = Free (Proc'' a b)
+
+type PMonSt m = ReaderT Config (StateT St m)
+
+type Proc a b = PMonSt (Proc' a b) ExitCode
+
+data Proc'' a b n = Wait Int | Unicast b Pid n | 
+                    QSize (Int -> n) | Recieve ((a, Pid) -> n) deriving (Functor)
+
+data TimerReq = CurrentTime
+
+data Output = WaitO Pid Int | UnicastO Pid String Pid 
+
+timerService1 :: Time -> Proc' TimerReq Int ExitCode
+timerService1 t = do
+  liftF $ Wait 1
+  Free $ QSize f
+      where
+        f x | x == 0 = timerService1 (t+1)
+            | otherwise = do
+                  forM_ [1..x] $ \_->
+                        Free $ Recieve g
+                  timerService1 (t+1)
+
+        g (CurrentTime, pid) = Free $ Unicast (t+1) pid (timerService1 (t+1))
+
+toMSt = lift . lift . liftF
+
+{-
+proc1 = do
+  config <- ask
+  toMSt $ Wait 10 
+  Unicast CurrentTime
+-}
+
+interp :: Proc' TimerReq Int ExitCode -> IO Int
+interp = undefined 
+
 
 {-
   The question is, what is the abstraction that we offer to the user.
@@ -87,19 +121,9 @@ time
 
 -}
 
-data Proc'' a b m n = Wait Int | Unicast b Pid (m n) | QSize (Int -> m n) | Recieve (a -> m n) deriving (Functor)
-
-timerService1 :: Proc a Int
-timerService1 = do
-  Wait 1
-  QSize f
-      where
-        f :: Int -> m n
-        f x | x == 0 = timerService1
-            | otherwise = repeatM
 
 
-
+{-
 
 
 stronglyAccurate1 :: FDet
@@ -120,3 +144,4 @@ hbBLoop startTime pid delta = do
   if time - startTime `mod` delta == 0
   then unicast () pid
   else hbBLoop startTime pid delta
+-}
