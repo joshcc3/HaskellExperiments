@@ -8,9 +8,11 @@ import qualified Data.Set as S
 import Control.Arrow
 import Control.Applicative
 
-data CTL a = T | F | Var a | Not (CTL a) | CTL a :|| CTL a | CTL a :&& CTL a | CTL a :-> CTL a
+data CTL a = T | F | Var a | 
+             Not (CTL a) | CTL a :|| CTL a | CTL a :&& CTL a | CTL a :-> CTL a
            | EX (CTL a) | EG (CTL a) | EU (CTL a, CTL a) | AF (CTL a)
-           | AX (CTL a) | AG (CTL a) | AU (CTL a, CTL a) | EF (CTL a) deriving (Eq, Ord, Show)
+           | AX (CTL a) | AG (CTL a) | AU (CTL a, CTL a) | EF (CTL a) 
+             deriving (Eq, Ord, Show)
 
 type State = S.Set String
 
@@ -22,7 +24,8 @@ data Step a = Return State | State :-- Step a | Union (Step a) (Step a)
 
 step :: State -> (a -> State) -> Step a -> Either State (Step a)
 step _ _ (Return s) = Left s
-step s m (st :-- stp) = either (Left . S.difference st) (Right . (st :--)) (step s m stp)
+step s m (st :-- stp) 
+    = either (Left . S.difference st) (Right . (st :--)) (step s m stp)
 step s m (Union ctl ctl') = res n n'
     where
       n = step s m ctl
@@ -40,16 +43,21 @@ step s m (Inter ctl ctl') = res n n'
       res (Right x) (Left y) = Right (Union x (Return y))
       res x y = Union <$> x <*> y
 step s m (Rewrite st) = step s m st
-step s m (SATex ctl) = Left $ satex s m ctl
+step s m (SATex ctl) = Left $ satex s m preMap ctl
 step s m (SATaf ctl) = Left $ sataf s m ctl
 step s m (SATeu (ctl, ctl')) = Left $ sateu s m ctl ctl'
 step s m (CTL ctl) = Right $ eval s m ctl
 
-satex :: State -> (a -> State) -> CTL a -> State
-satex s m ctl =
+preMap = undefined
 
 sataf :: State -> (a -> State) -> CTL a -> State
-sataf s m ctl = S.empty
+sataf s m ctl = undefined
+
+--satex :: State -> (a -> State) -> (String -> [String]) -> State
+satex s m' m ctl = S.fromList $ S.toList t1 >>= m
+    where 
+      t1 = either id undefined $ g $ eval s m' ctl
+      g = (>>= step s m') . g
 
 sateu :: State -> (a -> State) -> CTL a -> CTL a -> State
 sateu s m ctl ctl' = S.empty

@@ -1,10 +1,13 @@
+{-# LANGUAGE TupleSections #-}
 import Conway
 import Moore
 import Control.Monad.State
-import Control.Lens
+import Control.Lens hiding (lmap)
 import Control.Comonad
 import Control.Applicative
-
+import Data.Profunctor (lmap)
+import Control.Arrow
+import Test.QuickCheck
 
 data Move = Rock | Paper | Scissors deriving (Eq, Ord, Show, Enum)
 type Strategy = [Move] -> Move
@@ -61,8 +64,6 @@ strat5 = higherOrder (morph (strat3 Scissors)) (map morph [strat1, strat2])
 
 seq1 = [Rock, Rock, Rock, Rock, Paper, Paper, Paper, Scissors, Paper, Scissors, Paper]
 
-
-
 {-
 Oh, this is a very interesting morphism.
 We're converting between structures,
@@ -89,25 +90,70 @@ higherOrder a b = joinMoore (z a b (y (higherOrder a b)))
             go _ (x:xs) (Moore True f) = Moore x (go x xs . f)
             go x ls (Moore False f) = Moore x (go x ls . f)
 
-{-
-higherOrder2 :: Moore Move Move -> [Moore Move Move] -> Moore Move Move
-higherOrder2 a b = joinMoore (z a b (y (higherOrder a b)))
+
+loeb :: Functor f => f (f a -> a) -> f a
+loeb x = fmap ($ loeb x) x
+
+--ho2 :: Moore a (Moore a b -> b) 
+--ho2 
+
+sp = [(!! 2), (+) <$> (!! 0) <*> (!! 2), const 4]
+
+
+
+dep lm = Moore lm (\(m, lm') -> dep (m:lm'))
+
+dep' (Moore m f) lm = Moore lm (\(m', lm') -> dep' (f m') (m:lm'))
+
+regulate :: (b -> (a, c) -> c) -> Moore (a, c) b -> Moore (a, c) c -> Moore (a, c) c
+regulate g (Moore b f) (Moore b' f') = Moore b' ((regulate g <$> f <*> f') . (fst &&& g b))
+      
+tie :: Moore (a, c) c -> Moore a c
+tie (Moore c f) = Moore c (fmap tie (flip (curry f) c))
+
+combine :: Moore Move Bool -> Moore Move Move -> Moore Move [Move]
+combine c m = tie (regulate g c' m')
+    where 
+      c' :: Moore (Move, [Move]) Bool
+      c' = lmap fst c
+      m' = dep' m []
+      g b (_, c) = if b then [] else c
+
+
+toMoore :: a -> [a] -> Moore b a
+toMoore a [] = pure a
+toMoore a (x:xs) = Moore x (const (toMoore a xs))
+
+
+higherOrder :: Moore Move Move -> [Moore Move Move] -> Moore Move Move
+higherOrder a b = joinMoore (z a b (y (higherOrder a b)))
     where 
       y :: Moore Move Move -> Moore Move Bool
-      y m = switch <$> accum <*> delay [] (accuml m)
-
+      y m = switch <$> combine  (dep [] <*> delay [] (accuml m)
       z :: Moore Move Move -> [Moore Move Move] -> Moore Move Bool -> Moore Move (Moore Move Move)
       z d l m = go d l m
           where 
             go d [] m = pure d
-            go _ (x:xs) (Moore True f) = Moore (head l) (go x xs . f)
+            go _ (x:xs) (Moore True f) = Moore x (go x xs . f)
             go x ls (Moore False f) = Moore x (go x ls . f)
+
+
+
+
+{-
+Ok, so the goal of this rock paper scissors game is to come up with strategies.
+It's easy to progressively come up with more complicated strategies and keep 
+going in that direction.
+The assumption that we've been making so far is that we have no extra knowledge,
+i.e. when we are trying to come up with a strategy there is the assumption that
+we don't have any knowledge of what the opponent might do and we attempt to 
+guess the opponents move from his past moves. 
+However we could add more background knowledge to the way we handle this game.
+For example, create a machine that would choose a strategy given that we know which strategy the user
+might be using at a particular point in time
+Then extend that using the notion of uncertainty of him using multiple possible strategies at a specific point in time
+using []
 -}
-
-
-
-
-
 
 
 
@@ -209,3 +255,4 @@ It takes a stroke of genius to move in the opposite direction.
 
 -}
 
+--93 47 10 42

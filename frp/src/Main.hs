@@ -1,148 +1,234 @@
+{-----------------------------------------------------------------------------
+    reactive-banana-wx
+    
+    Example:
+    Small database with CRUD operations and filtering.
+    To keep things simple, the list box is rebuild every time
+    that the database is updated. This is perfectly fine for rapid prototyping.
+    A more sophisticated approach would use incremental updates.
+------------------------------------------------------------------------------}
 {-# LANGUAGE ScopedTypeVariables #-} -- allows "forall t. Moment t"
+{-# LANGUAGE RecursiveDo, NoMonomorphismRestriction #-}
 
-import Control.Monad
-import Control.Arrow
+import Prelude hiding (lookup)
+import Data.List (isPrefixOf)
+import Data.Maybe
+import qualified Data.Map as Map
+
 import Graphics.UI.WX hiding (Event)
 import Reactive.Banana
 import Reactive.Banana.WX
-import Data.Char
-import Data.Functor 
 
 {-----------------------------------------------------------------------------
     Main
 ------------------------------------------------------------------------------}
-
-main = switchCounters
-
-
-counter :: IO ()
-counter = start $ do
-    f       <- frame [text := "Counter"]
-    bup     <- button f [text := "Up"]
-    bdown   <- button f [text := "Down"]
-    output  <- staticText f []
+main :: IO ()
+main = start $ do
+    -- GUI layout
+    f           <- frame    [ text := "CRUD Example (Simple)" ]
+    listBox     <- singleListBox f []
+    createBtn   <- button f [ text := "Create" ]
+    deleteBtn   <- button f [ text := "Delete" ]
+    filterEntry <- entry  f [ ]
     
+    firstname <- entry f [ ]
+    lastname  <- entry f [ ]
+    
+    let dataItem = grid 10 10 [[label "First Name:", widget firstname]
+                              ,[label "Last Name:" , widget lastname]]
     set f [layout := margin 10 $
-            column 5 [widget bup, widget bdown, widget output]]
-   
-    let networkDescription :: forall t. Frameworks t => Moment t ()
-        networkDescription = do
-           eup   <- event0 bup command
-           edown <- event0 bdown command
-           let
-             counter :: Behavior t Int
-             counter = accumB 0 $ ((+1) <$ eup) `union` (subtract 1 <$ edown)
-    
-           sink output [text :== show <$> counter] 
+            grid 10 5
+                [[row 5 [label "Filter prefix:", widget filterEntry], glue]
+                ,[minsize (sz 200 300) $ widget listBox, dataItem]
+                ,[row 10 [widget createBtn, widget deleteBtn], glue]
+                ]]
 
+    -- event network
+    let networkDescription :: forall t. Frameworks t => Moment t ()
+        networkDescription = mdo
+            -- events from buttons
+            eCreate <- event0 createBtn command       
+            eDelete <- event0 deleteBtn command
+            -- filter string
+            tFilterString <- reactiveTextEntry filterEntry bFilterString
+            let bFilterString = stepper "" $ rumors tFilterString
+                tFilter = isPrefixOf <$> tFilterString
+                bFilter = facts  tFilter
+                eFilter = rumors tFilter
+
+            -- list box with selection
+            eSelection <- rumors <$> reactiveListDisplay listBox
+                bListBoxItems bSelection bShowDataItem
+            -- data item display
+            eDataItemIn <- rumors <$> reactiveDataItem (firstname,lastname)
+                bSelectionDataItem
+
+            let -- database
+                bDatabase :: Behavior t (Database DataItem)
+                bDatabase = accumB emptydb $ unions
+                    [ create ("Emil","Example") <$ eCreate
+                    , filterJust $ update' <$> bSelection <@> eDataItemIn
+                    , delete <$> filterJust (bSelection <@ eDelete)
+                    ]
+                    where
+                    update' mkey x = flip update x <$> mkey
+                
+                -- selection
+                bSelection :: Behavior t (Maybe DatabaseKey)
+                bSelection = stepper Nothing $ unions
+                    [ eSelection
+                    , Nothing <$ eDelete
+                    , Just . nextKey <$> bDatabase <@ eCreate
+                    , (\b s p -> b >>= \a -> if p (s a) then Just a else Nothing)
+                        <$> bSelection <*> bShowDataItem <@> eFilter
+                    ]
+                
+                bLookup :: Behavior t (DatabaseKey -> Maybe DataItem)
+                bLookup = flip lookup <$> bDatabase
+                
+                bShowDataItem :: Behavior t (DatabaseKey -> String)
+                bShowDataItem = (maybe "" showDataItem .) <$> bLookup
+                
+                bListBoxItems :: Behavior t [DatabaseKey]
+                bListBoxItems = (\p show -> filter (p. show) . keys)
+                    <$> bFilter <*> bShowDataItem <*> bDatabase
+
+                bSelectionDataItem :: Behavior t (Maybe DataItem)
+                bSelectionDataItem = (=<<) <$> bLookup <*> bSelection
+
+            -- automatically enable / disable editing
+            let
+                bDisplayItem :: Behavior t Bool
+                bDisplayItem = isJust <$> bSelection
+            
+            sink deleteBtn [ enabled :== bDisplayItem ]
+            sink firstname [ enabled :== bDisplayItem ]
+            sink lastname  [ enabled :== bDisplayItem ]
+    
     network <- compile networkDescription    
     actuate network
 
+{-----------------------------------------------------------------------------
+    Database Model
+------------------------------------------------------------------------------}
+type DatabaseKey = Int
+data Database a  = Database { nextKey :: !Int, db :: Map.Map DatabaseKey a }
 
-currencyConverter :: IO ()
-currencyConverter = start $ do
-   f <- frame [text := "Currency Currenter"]
-   input1 <- entry f []
-   input2 <- entry f []
-   set f [layout := margin 10 $ column 10 
-                 [grid 10 10 [[label "Dollar:", widget input1],
-                              [label "Euro:", widget input2]]]]
-   focusOn input1
-   let networkD :: forall t. Frameworks t => Moment t ()
-       networkD = do
-         i1 <- behaviorText input1 ""
-         i2 <- behaviorText input2 ""
-         sink input1 [text :== 
-                      (showNumber . fmap euroToDollar . readNum) 
-                      <$> i2]
-         sink input2 [text :== 
-                      (showNumber . fmap dollarToEuro . readNum) 
-                      <$> i1]
-   network <- compile networkD
-   actuate network
+emptydb :: Database a
+emptydb = Database 0 Map.empty
 
-   where 
-     dollarToEuro :: Int -> Int
-     dollarToEuro = (`div` 5) . (* 3) 
-     euroToDollar :: Int -> Int
-     euroToDollar = (`div` 3) . (* 5)
-               
-          
-switchCounters :: IO ()
-switchCounters = start $ do
-   f <- frame [text := "Two Counters"]
-   bup <- button f [text := "Up"]
-   bdn <- button f [text := "Down"]
-   switch <- button f [text := "Switch Counters"]
-   c1 <- staticText f []
-   c2 <- staticText f []
-   set f [layout := margin 10 $ column 10
-          [grid 10 10 [[widget bdn],
-                       [widget bup],
-                       [label "Counter 1:", widget c1],
-                       [label "Counter 2:", widget c2],
-                       [widget switch]]]]
-   let   networkD :: forall t. Frameworks t => Moment t ()
-         networkD = do
-           eup <- event0 bup command
-           edown <- event0 bdn command
-           eswitch <- event0 switch command
+keys :: Database a -> [DatabaseKey]
+keys    = Map.keys . db
 
-           let 
-               pipeline =     join (***) (uncurry whenE) 
-                          >>> uncurry union 
-                          >>> accumB 0 
-                          >>> fmap show
-               control = accumB True (not <$ eswitch)
-               control' = fmap not control
-               eup' = (+1) <$ eup
-               edown' = subtract 1 <$ edown
-               c1B = ((control, eup'), (control', edown'))
-               c2B = ((control, edown'), (control', eup'))
+create :: a -> Database a -> Database a
+create x     (Database newkey db) = Database (newkey+1) $ Map.insert newkey x db
 
-           sink c1 [text :== pipeline c1B]
-           sink c2 [text :== pipeline c2B]
-   network <- compile networkD
-   actuate network
-                
+update :: DatabaseKey -> a -> Database a -> Database a
+update key x (Database newkey db) = Database newkey     $ Map.insert key    x db
+
+delete :: DatabaseKey -> Database a -> Database a
+delete key   (Database newkey db) = Database newkey     $ Map.delete key db
+
+lookup :: DatabaseKey -> Database a -> Maybe a
+lookup key   (Database _      db) = Map.lookup key db
+
+{-----------------------------------------------------------------------------
+    Data items that are stored in the data base
+------------------------------------------------------------------------------}
+type DataItem = (String, String)
+
+showDataItem :: ([Char], [Char]) -> [Char]
+showDataItem (firstname, lastname) = lastname ++ ", " ++ firstname
+
+-- single text entry
+reactiveTextEntry :: Frameworks t
+    => TextCtrl a
+    -> Behavior t String              -- text value
+    -> Moment t (Tidings t String)    -- user changes
+reactiveTextEntry w btext = do
+    eUser <- eventText w        -- user changes
+
+    -- filter text setting that are simultaneous with user events
+    etext <- changes btext
+    let
+        etext2 = fst $ split $ unionWith (curry snd) (Left () <$ etext) (Right () <$ eUser)
+        btext2 = imposeChanges btext etext2
+
+    sink w [ text :== btext2 ]  -- display value
+    return $ tidings btext eUser
+
+-- whole data item (consisting of two text entries)
+reactiveDataItem :: Frameworks t
+    => (TextCtrl a, TextCtrl b)
+    -> Behavior t (Maybe DataItem)
+    -> Moment t (Tidings t DataItem)
+reactiveDataItem (firstname,lastname) binput = do
+    t1 <- reactiveTextEntry firstname (fst . fromMaybe ("","") <$> binput)
+    t2 <- reactiveTextEntry lastname  (snd . fromMaybe ("","") <$> binput)
+    return $ (,) <$> t1 <*> t2
 
 
-{-
-  I would like
--}                
+{-----------------------------------------------------------------------------
+    reactive list display
+    
+    Display a list of (distinct) items in a list box.
+    The current selection contains one or no items.
+    Changing the set may unselect the current item,
+        but will not change it to another item.
+------------------------------------------------------------------------------}
+reactiveListDisplay :: forall t a b. (Ord a, Frameworks t)
+    => SingleListBox b          -- ListBox widget to use
+    -> Behavior t [a]           -- list of items
+    -> Behavior t (Maybe a)     -- selected element
+    -> Behavior t (a -> String) -- display an item
+    -> Moment t
+        (Tidings t (Maybe a))   -- current selection as item (possibly empty)
+reactiveListDisplay w bitems bsel bdisplay = do
+    -- animate output items
+    sink w [ items :== map <$> bdisplay <*> bitems ]
+   
+    -- animate output selection
+    let bindices :: Behavior t (Map.Map a Int)
+        bindices = (Map.fromList . flip zip [0..]) <$> bitems
+        bindex   = (\m a -> fromMaybe (-1) $ flip Map.lookup m =<< a) <$>
+                    bindices <*> bsel
+    sink w [ selection :== bindex ]
 
-arithmetic :: IO ()
-arithmetic = start $ do
-  f <- frame [text := "Arithmetic"]
-  input1 <- entry f [text := "default"]
-  input2 <- entry f [text := "default"]
-  output <- staticText f []
-  set f [layout := margin 10 $ row 10
-                    [widget input1, label "+", widget input2, 
-                     label "=", minsize (sz 40 20) (widget output)]]
-  
-  let networkD :: forall t. Frameworks t => Moment t ()
-      networkD = do
-        i1 <- behaviorText input1 "asd" 
-        i2 <- behaviorText input2 "asd"
-        let result :: Behavior t (Maybe Int)
-            result = (liftA2 . liftA2) (+) (readNumber <$> i1) (readNumber <$> i2)
-            readNumber = readNum
-        sink output [text :== showNumber <$> result]
-  network <- compile networkD
-  actuate network
+    -- changing the display won't change the current selection
+    -- eDisplay <- changes display
+    -- sink listBox [ selection :== stepper (-1) $ bSelection <@ eDisplay ]
 
-showNumber Nothing = " -- "
-showNumber (Just v) = show v
+    -- user selection
+    let bindices2 :: Behavior t (Map.Map Int a)
+        bindices2 = Map.fromList . zip [0..] <$> bitems
+    esel <- eventSelection w
+    return $ tidings bsel $ flip Map.lookup <$> bindices2 <@> esel
 
-readNum :: String -> Maybe Int
-readNum = readNum' 0
-    where 
-      readNum' r [] = Nothing
-      readNum' r (d:ds) 
-          | isDig d && null ds = Just $ r*10 + toDig d
-          | isDig d = readNum' (r*10 + toDig d) ds
-          | otherwise = Nothing
-          where 
-            isDig d = ord d >= ord '0' && ord d <= ord '9'
-            toDig d = ord d - ord '0'
+
+--------------------------------------------------------------------------------
+
+
+-- | Data type representing a behavior 'facts'
+-- and suggestions to change it 'rumors'.
+data Tidings t a = T { facts :: Behavior t a, rumors :: Event t a }
+
+-- | Smart constructor. Combine facts and rumors into 'Tidings'.
+tidings :: Behavior t a -> Event t a -> Tidings t a
+tidings b e = T b (calm e)
+
+instance Functor (Tidings t) where
+    fmap f (T b e) = T (fmap f b) (fmap f e)
+
+-- | The applicative instance combines 'rumors'
+-- and uses 'facts' when some of the 'rumors' are not available.
+instance Applicative (Tidings t) where
+    pure x  = T (pure x) never
+    f <*> x = uncurry ($) <$> pair f x
+
+pair :: Tidings t a -> Tidings t b -> Tidings t (a,b)
+pair (T bx ex) (T by ey) = T b e
+    where
+    b = (,) <$> bx <*> by
+    x = flip (,) <$> by <@> ex
+    y = (,) <$> bx <@> ey
+    e = unionWith (\(x,_) (_,y) -> (x,y)) x y
