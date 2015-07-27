@@ -9,11 +9,13 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 
+import qualified Control.Category as C
 import Data.Functor.Foldable
 import qualified Data.Map as M
 import qualified Data.Vector as V
 import qualified Data.Set as S
 import Data.Monoid
+import Prelude hiding (id)
 import Data.List
 import Data.Char
 import Control.Monad
@@ -24,12 +26,10 @@ import Control.Monad.Reader
 import Control.Monad.Free
 import System.Random
 import Test.QuickCheck
+import Control.Arrow
 
 al (Just x) = x
 fi = fromIntegral
-
-kmp :: Eq a => [a] -> [a] -> Bool
-kmp = impl2
 
 {-
   So in implementation 1 what we are going to do is 
@@ -42,105 +42,99 @@ kmp = impl2
   you have successfully matched all characters upto that ith character
 -}
 
-type KMP a = [(a, Int)]
+data KMP s b = KMP { runKMP :: s -> (b, KMP s b) }
+
+instance C.Category KMP where
+    id = KMP (\x -> (x, C.id))
+    KMP f . KMP g = KMP h
+        where
+          h a = case g a of
+           (b, k) -> case f b of
+                  (c, k') -> (c, k' C.. k)
+
+instance Arrow KMP where
+  arr f = KMP (\s -> (f s, arr f))
+  first (KMP f) = KMP (\(b, d) -> 
+                    case f b of 
+                      (c, k) -> ((c, d), first k))
 
 
-impl1 :: forall a. Eq a => [a] -> [a] -> Bool
-impl1 needle haystack = tryMatch 0 haystack
+instance Functor (KMP s) where
+    fmap f (KMP g) = KMP $ \s -> case g s of
+                                  (a, k) -> (f a, fmap f k)
+
+instance Applicative (KMP s) where
+    pure = def
+    KMP f <*> KMP g = KMP $ \s 
+                    -> case f s of
+                        (a, k) -> case g s of
+                                   (a', k') -> (a a', k <*> k')
+
+instance Monad (KMP s) where
+  return = pure
+  k >>= f = joinKMP (fmap f k)
+
+def x = KMP (const (x, def x))
+
+km :: Eq a => [a] -> [a] -> Bool
+km sub super =
+    null
+    . last
+    . map snd
+    . take (length super + 1)
+    . iterateMachine (super, sub)
+    $ kmpFunc
+
+iterateMachine :: s -> KMP s s -> [s]
+iterateMachine s k = s : uncurry iterateMachine (runKMP k s)
+
+kmpFunc :: Eq a => KMP ([a], [a]) ([a], [a])
+kmpFunc = join k
+    where
+      k = KMP f
+      f (_, []) = (second (pure []), k)
+      f ([], x) = (second . pure $ x, k)
+      f (a:as, a':as')
+        | a == a' = (arr tail *** successProc, k)
+        | otherwise = (fProcs, k)
+
+successProc = arr tail'
     where 
-      tryMatch j []
-               | j == len = True
-               | otherwise = False
-      tryMatch j (x:xs)
-               | j < 0 = tryMatch 0 xs
-               | j == len = True
-               | x == needle !! j = tryMatch (j+1) xs
-               | otherwise = tryMatch ((tbl !! j) + 1) (x:xs)
-      tbl = tblp needle
-      len = length needle
-{-
-  The way one generally builds this table is to keep the current index i
-  you are at in the table  and another index j 
-  such that [0..j] is the longest prefix matching a suffix ending at i-1
--}
+      tail' [] = []
+      tail' x = tail x
 
-tblp [] = []
-tblp needle = -1:unfoldr g (1, -1)
+delay :: c -> KMP b c -> Int -> KMP b c
+delay c x 0 = x
+delay c x n = KMP $ const . (c,) . delay c x $ n - 1
+
+fProcs :: Eq a => KMP ([a], [a]) ([a], [a])
+fProcs = fmap al 
+         . foldl combine (pure Nothing) 
+         . map (delay (Just ([], [])) failProc)
+         $ [0..]
+    where
+      combine m n = KMP f
+          where 
+            f s = case runKMP m s of
+                    (Nothing, x) -> runKMP n s 
+                    y -> y
+      al (Just x) = x
+
+failProc :: Eq a => KMP ([a], [a]) (Maybe ([a], [a]))
+failProc = k
     where 
-      g :: (Int, Int) -> Maybe (Int, (Int, Int))
-      g (i, j) | i == len = Nothing
-               | needle !! i == needle !! (j+1) = Just (j+1, (i+1, j+1))
-               | otherwise = Just (f j, (i+1, f j))
-               where 
-                 f x = if x >= 0 
-                        then if (needle !! i) == needle !! x 
-                             then x
-                             else f (tblp needle !! x)
-                        else x
-      len = length needle
-                           
+      k = arr f
+      f (a:as, a':as') | a == a' = Just $ (as, as')
+                       | otherwise = Nothing
 
-
-{-
-  I'd say that was pretty horrible. All this low level inspection of data is quite grungy and frankly quite unfit for civilzed society I say. It calls for a more declarative approach. 
-  The problems with the above is the implementation of tblp. 
-  If we think about it, we would like to have something that doesn't actually 
-  commit to anything until it knows for sure that this is the right path. 
-  
--}
-
-
-{-
-  So instead we could declaratively construct our table.
-  Assume we have a transition function that will take us to
-  the right state if the input doesn't match to
-  and to the same state if it does.
-  If we have exhausted our input then we are done
-  If we have outstanding characters and the next character
-  matches the character we are at then we get the state we 
-  were a
-  the transition function at this point
--}
-
-
-data Kmp a = Next { nxt :: (a -> Kmp a), done :: Bool}
-
-impl2 :: Eq a => [a] -> [a] -> Bool
-impl2 n h = match table h
+joinKMP k = KMP f
     where 
-      match k [] = done k
-      match k (x:xs) = done k || match (nxt k x) xs
-      table = tbl2 n (const table)
+      f x = case runKMP k x of
+              (m, n) -> (fst . runKMP m $ x, joinKMP . fmap (snd . flip runKMP x) $ n)
 
-tbl2 :: forall a. Eq a => [a] -> (a -> Kmp a) -> Kmp a
-tbl2 [] f = Next f True
-tbl2 (x:xs) transition = Next g False
+foldr' f a l = foldl (\y x -> f x . y) C.id l $ a
 
-    where 
-      g a | x == a = tbl2 xs (nxt (transition x))
-          | otherwise = transition x
-              
-match (tbl2 "aab" (const table)) "aaab"
-match (tbl2 "ab" (nxt table)) "aab"
-match (nxt ((tbl2 "ab" (nxt table))) 'a') "ab"
-match (tbl2 "b" (nxt (nxt table 'a'))) "ab"
-match (nxt (tbl2 "b" (nxt (nxt table 'a'))) 'a') "b"
-match ((nxt (nxt table 'a')) 'b') "b"
-match (nxt ((nxt (nxt table 'a')) 'b') 'b') []
-
-
-
-
-
-
-
-naive needle haystack = any ((== needle) . take len) suffixes
-    where 
-      suffixes = tails haystack
-      len = length needle
-
-prop1 n h = kmp n h == naive n h
-
-test = quickCheckWith myArgs
-
-myArgs = stdArgs { maxSuccess = 750, maxSize = 750 }
+breakOut _ a [] = a
+breakOut f a (x:xs) = case x of
+                      Just x -> f a x
+                      Nothing -> a

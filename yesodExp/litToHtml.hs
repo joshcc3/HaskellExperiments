@@ -17,7 +17,7 @@ main = do
            H.style ! A.type_  "text/css" $
             toHtml $ styleToCss tango
          H.body $ do
-                  litToHaskell (lines c)
+                  toHaskell c
 
 litToHaskell :: ([String]) -> Html
 litToHaskell s = g $ foldl f ([], p "Begin" ) s
